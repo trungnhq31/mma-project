@@ -83,14 +83,30 @@ export const getVehicleTypes = async (
     ...(keyword && { keyword }),
   });
   
-  const response = await fetch(`${API_BASE_URL}/vehicle-type?${params}`);
+  const url = `${API_BASE_URL}/vehicle-type?${params}`;
+  console.log('Fetching vehicle types from:', url);
   
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error: any) {
+    console.error('getVehicleTypes error:', error);
+    if (error.message === 'Network request failed' || error.message?.includes('Network')) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy và API URL đúng.');
+    }
+    throw error;
   }
-  
-  return response.json();
 };
 
 /**
