@@ -6,13 +6,13 @@ import * as yup from 'yup';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialIcons } from '@expo/vector-icons';
-
-type VehicleType = {
-  vehicleTypeId: string;
-  vehicleTypeName: string;
-  manufacturer: string;
-  modelYear: string;
-};
+import {
+  getVehicleTypes,
+  getServiceTypesByVehicleType,
+  createAppointment,
+  VehicleTypeResponse,
+  ServiceTypeResponse,
+} from '../services/api';
 
 interface ServiceType {
   serviceTypeId: string;
@@ -54,106 +54,6 @@ type BookingFormData = {
   appointmentDate: Date | null;
   notes: string;
 };
-
-// Mock data
-const VEHICLE_TYPES: VehicleType[] = [
-  { vehicleTypeId: '1', vehicleTypeName: 'VinFast VF e34', manufacturer: 'VinFast', modelYear: '2022' },
-  { vehicleTypeId: '2', vehicleTypeName: 'VinFast VF 8', manufacturer: 'VinFast', modelYear: '2023' },
-  { vehicleTypeId: '3', vehicleTypeName: 'VinFast VF 9', manufacturer: 'VinFast', modelYear: '2023' },
-];
-
-const SERVICE_TYPES: ServiceType[] = [
-  {
-    serviceTypeId: 's1',
-    serviceName: 'Bảo dưỡng định kỳ',
-    parentId: null,
-    isActive: true,
-    isDeleted: false,
-    children: [
-      { 
-        serviceTypeId: 's1-1', 
-        serviceName: 'Bảo dưỡng 10.000 km',
-        parentId: 's1',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's1-2', 
-        serviceName: 'Bảo dưỡng 20.000 km',
-        parentId: 's1',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's1-3', 
-        serviceName: 'Bảo dưỡng 30.000 km',
-        parentId: 's1',
-        isActive: true,
-        isDeleted: false
-      },
-    ],
-  },
-  {
-    serviceTypeId: 's2',
-    serviceName: 'Sửa chữa',
-    parentId: null,
-    isActive: true,
-    isDeleted: false,
-    children: [
-      { 
-        serviceTypeId: 's2-1', 
-        serviceName: 'Thay lọc gió',
-        parentId: 's2',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's2-2', 
-        serviceName: 'Thay dầu phanh',
-        parentId: 's2',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's2-3', 
-        serviceName: 'Kiểm tra hệ thống điện',
-        parentId: 's2',
-        isActive: true,
-        isDeleted: false
-      },
-    ],
-  },
-  {
-    serviceTypeId: 's3',
-    serviceName: 'Vệ sinh',
-    parentId: null,
-    isActive: true,
-    isDeleted: false,
-    children: [
-      { 
-        serviceTypeId: 's3-1', 
-        serviceName: 'Vệ sinh nội thất',
-        parentId: 's3',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's3-2', 
-        serviceName: 'Vệ sinh động cơ',
-        parentId: 's3',
-        isActive: true,
-        isDeleted: false
-      },
-      { 
-        serviceTypeId: 's3-3', 
-        serviceName: 'Đánh bóng sơn',
-        parentId: 's3',
-        isActive: true,
-        isDeleted: false
-      },
-    ],
-  },
-];
 
 const SERVICE_CENTER_ADDRESS = '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM';
 
@@ -197,6 +97,8 @@ const BookAppointmentScreen = () => {
   const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
   const [services, setServices] = useState<ServiceType[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleTypeResponse[]>([]);
+  const [isLoadingVehicleTypes, setIsLoadingVehicleTypes] = useState(false);
 
   const {
     control,
@@ -223,31 +125,72 @@ const BookAppointmentScreen = () => {
   const serviceType = watch('serviceType');
   const watchVehicleType = watch('vehicleTypeId');
 
+  // Fetch vehicle types on mount
+  useEffect(() => {
+    const fetchVehicleTypes = async () => {
+      setIsLoadingVehicleTypes(true);
+      try {
+        const response = await getVehicleTypes(0, 100);
+        if (response.success && response.data.data) {
+          setVehicleTypes(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching vehicle types:', error);
+        Alert.alert('Lỗi', 'Không thể tải danh sách loại xe. Vui lòng thử lại sau.');
+      } finally {
+        setIsLoadingVehicleTypes(false);
+      }
+    };
+    fetchVehicleTypes();
+  }, []);
+
   useEffect(() => {
     const vehicleId = watchVehicleType || '';
     setSelectedVehicleTypeId(vehicleId);
     
     // Clear selected services when vehicle changes
     if (vehicleId) {
-      // You might want to fetch services for the selected vehicle here
-      // fetchServicesForVehicle(vehicleId);
+      // Fetch services for the selected vehicle
+      const fetchServices = async () => {
+        setIsLoadingServices(true);
+        try {
+          const response = await getServiceTypesByVehicleType(vehicleId, 0, 1000, '', true);
+          if (response.success && response.data.data) {
+            // Flatten tree structure for easier rendering
+            const flattenServices = (items: ServiceTypeResponse[]): ServiceType[] => {
+              const result: ServiceType[] = [];
+              items.forEach(item => {
+                result.push({
+                  serviceTypeId: item.serviceTypeId,
+                  serviceName: item.serviceName,
+                  description: item.description,
+                  estimatedDurationMinutes: item.estimatedDurationMinutes,
+                  parentId: item.parentId,
+                  isActive: item.isActive,
+                  isDeleted: item.isDeleted,
+                  children: item.children ? flattenServices(item.children) : undefined,
+                });
+              });
+              return result;
+            };
+            setServices(flattenServices(response.data.data));
+          }
+        } catch (error) {
+          console.error('Error fetching services:', error);
+          Alert.alert('Lỗi', 'Không thể tải danh sách dịch vụ. Vui lòng thử lại sau.');
+          setServices([]);
+        } finally {
+          setIsLoadingServices(false);
+        }
+      };
+      fetchServices();
     } else {
       // Clear selected services when no vehicle is selected
       setSelectedServices([]);
+      setServices([]);
       setValue('selectedServices', [], { shouldValidate: true });
     }
   }, [watchVehicleType, setValue]);
-
-  useEffect(() => {
-    // Using mock data instead of API call
-    if (selectedVehicleTypeId) {
-      // Filter services based on the selected vehicle type if needed
-      // For now, we'll use all services as mock data
-      setServices(SERVICE_TYPES);
-    } else {
-      setServices([]);
-    }
-  }, [selectedVehicleTypeId]);
 
   const areAllChildrenSelected = (service: ServiceType): boolean => {
     if (!service.children || service.children.length === 0) {
@@ -356,17 +299,61 @@ const BookAppointmentScreen = () => {
   const onSubmit = async (data: BookingFormData) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Map serviceType from 'onsite'/'mobile' to 'AT_CENTER'/'MOBILE'
+      const serviceMode = data.serviceType === 'onsite' ? 'AT_CENTER' : 'MOBILE';
       
+      // Prepare address - use service center address if onsite, otherwise use user input
+      const address = data.serviceType === 'onsite' ? SERVICE_CENTER_ADDRESS : data.address;
+
+      // Call API
+      const response = await createAppointment({
+        customerFullName: data.fullName,
+        customerPhoneNumber: data.phoneNumber,
+        customerEmail: data.email,
+        vehicleTypeId: data.vehicleTypeId,
+        vehicleNumberPlate: data.licensePlate,
+        vehicleKmDistances: data.mileage || '0',
+        userAddress: address,
+        serviceMode,
+        scheduledAt: data.appointmentDate!.toISOString(),
+        notes: data.notes || '',
+        serviceTypeIds: data.selectedServices,
+      });
+
+      if (response.success) {
+        Alert.alert(
+          'Đặt lịch thành công',
+          'Chúng tôi đã nhận được yêu cầu đặt lịch của bạn. Vui lòng kiểm tra email để xác nhận.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Reset form
+                setValue('fullName', '');
+                setValue('phoneNumber', '');
+                setValue('email', '');
+                setValue('vehicleTypeId', '');
+                setValue('licensePlate', '');
+                setValue('mileage', '');
+                setValue('selectedServices', []);
+                setValue('serviceType', 'onsite');
+                setValue('address', SERVICE_CENTER_ADDRESS);
+                setValue('appointmentDate', null);
+                setValue('notes', '');
+                setSelectedServices([]);
+              },
+            },
+          ]
+        );
+      } else {
+        throw new Error(response.message || 'Failed to create appointment');
+      }
+    } catch (error: any) {
+      console.error('Error creating appointment:', error);
       Alert.alert(
-        'Đặt lịch thành công',
-        'Chúng tôi đã nhận được yêu cầu đặt lịch của bạn. Vui lòng kiểm tra email để xác nhận.'
+        'Lỗi',
+        error.message || 'Đã có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.'
       );
-      
-      // Reset form or navigate back
-    } catch (error) {
-      Alert.alert('Lỗi', 'Đã có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -517,20 +504,27 @@ const BookAppointmentScreen = () => {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Mẫu xe/Loại xe *</Text>
               <View style={[styles.pickerContainer, errors.vehicleTypeId && styles.inputError]}>
-                <Picker
-                  selectedValue={value}
-                  onValueChange={onChange}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Chọn loại xe" value="" />
-                  {VEHICLE_TYPES.map(vehicle => (
-                    <Picker.Item
-                      key={vehicle.vehicleTypeId}
-                      label={`${vehicle.manufacturer} ${vehicle.vehicleTypeName} (${vehicle.modelYear})`}
-                      value={vehicle.vehicleTypeId}
-                    />
-                  ))}
-                </Picker>
+                {isLoadingVehicleTypes ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#007AFF" />
+                    <Text style={styles.loadingText}>Đang tải...</Text>
+                  </View>
+                ) : (
+                  <Picker
+                    selectedValue={value}
+                    onValueChange={onChange}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Chọn loại xe" value="" />
+                    {vehicleTypes.map(vehicle => (
+                      <Picker.Item
+                        key={vehicle.vehicleTypeId}
+                        label={`${vehicle.manufacturer || ''} ${vehicle.vehicleTypeName}${vehicle.modelYear ? ` (${vehicle.modelYear})` : ''}`}
+                        value={vehicle.vehicleTypeId}
+                      />
+                    ))}
+                  </Picker>
+                )}
               </View>
               {errors.vehicleTypeId && <Text style={styles.errorText}>{errors.vehicleTypeId.message}</Text>}
             </View>
@@ -585,9 +579,18 @@ const BookAppointmentScreen = () => {
       <View style={styles.section}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Danh mục dịch vụ *</Text>
-          <View style={styles.servicesList}>
-            {SERVICE_TYPES.map(service => renderServiceItem(service))}
-          </View>
+          {isLoadingServices ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={styles.loadingText}>Đang tải dịch vụ...</Text>
+            </View>
+          ) : services.length === 0 && selectedVehicleTypeId ? (
+            <Text style={styles.emptyText}>Không có dịch vụ nào cho loại xe này</Text>
+          ) : (
+            <View style={styles.servicesList}>
+              {services.map(service => renderServiceItem(service))}
+            </View>
+          )}
           {errors.selectedServices && (
             <Text style={styles.errorText}>{errors.selectedServices.message}</Text>
           )}
@@ -955,6 +958,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginLeft: 10,
+    color: '#666',
+    fontSize: 14,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+    padding: 20,
+    fontStyle: 'italic',
   },
 });
 
