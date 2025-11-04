@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   getVehicleTypes,
@@ -73,25 +73,31 @@ const schema = yup.object().shape({
   licensePlate: yup
     .string()
     .required('Vui lòng nhập biển số xe')
-    .matches(/^[0-9]{2}[A-Za-z][0-9A-Za-z]-[0-9]{4,5}$/, 'Biển số xe không hợp lệ (VD: 30A-12345)'),
+    .matches(/^[0-9]{2}[A-Za-z][0-9A-Za-z]*-[0-9]{4,5}$/, 'Biển số xe không hợp lệ (VD: 72A-44444 hoặc 30A-12345)'),
   selectedServices: yup
     .array()
     .min(1, 'Vui lòng chọn ít nhất một dịch vụ'),
   serviceType: yup.string().required('Vui lòng chọn loại hình dịch vụ'),
-  address: yup.string().when('serviceType', {
-    is: 'mobile',
-    then: yup.string().required('Vui lòng nhập địa chỉ gặp nạn'),
+  address: yup.string().when('serviceType', (serviceType, schema) => {
+    return serviceType === 'mobile' 
+      ? schema.required('Vui lòng nhập địa chỉ gặp nạn')
+      : schema;
   }),
   appointmentDate: yup
     .date()
     .required('Vui lòng chọn ngày giờ hẹn')
-    .min(new Date(), 'Ngày giờ hẹn phải trong tương lai'),
+    .test('is-future', 'Ngày giờ hẹn phải trong tương lai', (value) => {
+      if (!value) return false;
+      const date = value instanceof Date ? value : new Date(value);
+      return date > new Date();
+    }),
   notes: yup.string(),
 });
 
 const BookAppointmentScreen = () => {
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerValue, setDatePickerValue] = useState<Date>(new Date());
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedVehicleTypeId, setSelectedVehicleTypeId] = useState('');
@@ -124,6 +130,20 @@ const BookAppointmentScreen = () => {
 
   const serviceType = watch('serviceType');
   const watchVehicleType = watch('vehicleTypeId');
+
+
+  // Clear address when switching to mobile service, set default when switching to onsite
+  useEffect(() => {
+    if (serviceType === 'mobile') {
+      const currentAddress = watch('address');
+      if (currentAddress === SERVICE_CENTER_ADDRESS) {
+        setValue('address', '', { shouldValidate: false });
+      }
+    } else if (serviceType === 'onsite') {
+      setValue('address', SERVICE_CENTER_ADDRESS, { shouldValidate: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceType]);
 
   // Fetch vehicle types on mount
   useEffect(() => {
@@ -297,13 +317,28 @@ const BookAppointmentScreen = () => {
   };
 
   const onSubmit = async (data: BookingFormData) => {
-    setLoading(true);
+    console.log('[BookAppointment] onSubmit called with data:', data);
+    // Loading state already set in onPress handler
     try {
       // Map serviceType from 'onsite'/'mobile' to 'AT_CENTER'/'MOBILE'
       const serviceMode = data.serviceType === 'onsite' ? 'AT_CENTER' : 'MOBILE';
       
       // Prepare address - use service center address if onsite, otherwise use user input
       const address = data.serviceType === 'onsite' ? SERVICE_CENTER_ADDRESS : data.address;
+
+      console.log('[BookAppointment] Calling API with payload:', {
+        customerFullName: data.fullName,
+        customerPhoneNumber: data.phoneNumber,
+        customerEmail: data.email,
+        vehicleTypeId: data.vehicleTypeId,
+        vehicleNumberPlate: data.licensePlate,
+        vehicleKmDistances: data.mileage || '0',
+        userAddress: address,
+        serviceMode,
+        scheduledAt: data.appointmentDate!.toISOString(),
+        notes: data.notes || '',
+        serviceTypeIds: data.selectedServices,
+      });
 
       // Call API
       const response = await createAppointment({
@@ -322,8 +357,8 @@ const BookAppointmentScreen = () => {
 
       if (response.success) {
         Alert.alert(
-          'Đặt lịch thành công',
-          'Chúng tôi đã nhận được yêu cầu đặt lịch của bạn. Vui lòng kiểm tra email để xác nhận.',
+          'Đặt lịch thành công! ✅',
+          `Chúng tôi đã nhận được yêu cầu đặt lịch của bạn.\n\nMã cuộc hẹn: ${response.data}\n\nVui lòng kiểm tra email để xác nhận.`,
           [
             {
               text: 'OK',
@@ -346,13 +381,28 @@ const BookAppointmentScreen = () => {
           ]
         );
       } else {
-        throw new Error(response.message || 'Failed to create appointment');
+        throw new Error(response.message || 'Không thể tạo cuộc hẹn. Vui lòng thử lại.');
       }
     } catch (error: any) {
       console.error('Error creating appointment:', error);
+      
+      // Xử lý các loại lỗi khác nhau
+      let errorMessage = 'Đã có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.errorCode === 'VALIDATION_ERROR') {
+        errorMessage = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại các trường đã nhập.';
+      } else if (error.status === 400) {
+        errorMessage = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
+      } else if (error.status === 500) {
+        errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+      }
+      
       Alert.alert(
-        'Lỗi',
-        error.message || 'Đã có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.'
+        'Đặt lịch thất bại ❌',
+        errorMessage,
+        [{ text: 'Đóng', style: 'default' }]
       );
     } finally {
       setLoading(false);
@@ -665,7 +715,11 @@ const BookAppointmentScreen = () => {
               <Text style={styles.label}>Ngày giờ hẹn *</Text>
               <TouchableOpacity
                 style={[styles.input, styles.dateTimeInput, errors.appointmentDate && styles.inputError]}
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => {
+                  const currentDate = value || new Date();
+                  setDatePickerValue(currentDate instanceof Date ? currentDate : new Date(currentDate));
+                  setShowDatePicker(true);
+                }}
               >
                 <Text style={value ? styles.dateTimeText : styles.placeholderText}>
                   {value ? new Date(value).toLocaleString('vi-VN') : 'Chọn ngày và giờ'}
@@ -675,26 +729,20 @@ const BookAppointmentScreen = () => {
               {errors.appointmentDate && (
                 <Text style={styles.errorText}>{errors.appointmentDate.message}</Text>
               )}
-              {showDatePicker && (
-                <DateTimePicker
-                  value={value || new Date()}
-                  mode="datetime"
-                  display="default"
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    // On Android, the picker dismisses automatically
-                    if (event.type === 'dismissed') {
-                      setShowDatePicker(false);
-                      return;
-                    }
-                    
-                    setShowDatePicker(false);
-                    if (selectedDate) {
-                      onChange(selectedDate);
-                    }
-                  }}
-                />
-              )}
+              <DateTimePickerModal
+                isVisible={showDatePicker}
+                mode="datetime"
+                date={datePickerValue}
+                minimumDate={new Date()}
+                onConfirm={(selectedDate) => {
+                  onChange(selectedDate);
+                  setShowDatePicker(false);
+                }}
+                onCancel={() => {
+                  setShowDatePicker(false);
+                }}
+                locale="vi_VN"
+              />
             </View>
           )}
           name="appointmentDate"
@@ -724,7 +772,65 @@ const BookAppointmentScreen = () => {
 
       <TouchableOpacity
         style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-        onPress={handleSubmit(onSubmit as any)}
+        onPress={async () => {
+          // Prevent double/triple submission - check FIRST
+          if (loading) {
+            console.log('[BookAppointment] Already submitting, ignoring...');
+            return;
+          }
+
+          // Set loading state IMMEDIATELY to prevent double submission
+          setLoading(true);
+
+          console.log('[BookAppointment] Submit button pressed');
+          const formValues = watch();
+          console.log('[BookAppointment] Form values:', formValues);
+          console.log('[BookAppointment] Form errors:', errors);
+          
+          try {
+            // Validate manually
+            await schema.validate(formValues, { abortEarly: false });
+            console.log('[BookAppointment] Manual validation passed');
+            // If manual validation passes, call onSubmit directly
+            await onSubmit(formValues as BookingFormData);
+          } catch (validationError: any) {
+            console.log('[BookAppointment] Manual validation failed:', validationError);
+            // Reset loading on validation error so user can try again
+            setLoading(false);
+            
+            if (validationError.errors) {
+              Alert.alert(
+                'Thông tin chưa hợp lệ',
+                validationError.errors.join('\n'),
+                [{ text: 'OK' }]
+              );
+            } else {
+              // Fallback to handleSubmit
+              console.log('[BookAppointment] Falling back to handleSubmit...');
+              handleSubmit(
+                async (data) => {
+                  console.log('[BookAppointment] ✅ Validation passed, calling onSubmit');
+                  await onSubmit(data);
+                },
+                (validationErrors) => {
+                  console.log('[BookAppointment] ❌ Validation failed:', JSON.stringify(validationErrors, null, 2));
+                  const errorMessages = Object.values(validationErrors)
+                    .map((err: any) => err?.message)
+                    .filter(Boolean)
+                    .join('\n');
+                  
+                  console.log('[BookAppointment] Error messages:', errorMessages);
+                  
+                  Alert.alert(
+                    'Thông tin chưa hợp lệ',
+                    errorMessages || 'Vui lòng kiểm tra và điền đầy đủ các trường bắt buộc.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              )();
+            }
+          }
+        }}
         disabled={loading}
       >
         {loading ? (
@@ -976,6 +1082,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     padding: 20,
     fontStyle: 'italic',
+  },
+  iosPickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  iosPickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  iosPickerButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

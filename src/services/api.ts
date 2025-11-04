@@ -1,5 +1,33 @@
-// API Base URL - Update this if your backend runs on different port/host
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api/v1';
+import { Platform } from 'react-native';
+
+// API Base URL - Load from environment variable
+// Set EXPO_PUBLIC_API_BASE_URL in your .env file
+// Examples:
+//   Android Emulator: EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3000/api/v1
+//   iOS Simulator: EXPO_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1
+//   Physical Device: EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:3000/api/v1
+const getApiBaseUrl = (): string => {
+  // Priority 1: Environment variable (recommended)
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+  
+  // Priority 2: Auto-detect based on platform (fallback)
+  if (Platform.OS === 'android') {
+    // Android emulator uses 10.0.2.2 to access host machine's localhost
+    return 'http://10.0.2.2:3000/api/v1';
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator can use localhost
+    return 'http://localhost:3000/api/v1';
+  }
+  
+  // Default fallback
+  return 'http://10.0.2.2:3000/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log(`[API Config] Platform: ${Platform.OS}, Base URL: ${API_BASE_URL}`);
+console.log(`[API Config] Using .env: ${process.env.EXPO_PUBLIC_API_BASE_URL ? 'YES' : 'NO (using fallback)'}`);
 
 // ============ TYPES ============
 
@@ -161,18 +189,45 @@ export const getServiceTypesByVehicleType = async (
 export const createAppointment = async (
   data: CreateAppointmentRequest
 ): Promise<ApiResponse<string>> => {
-  const response = await fetch(`${API_BASE_URL}/appointment`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+  const url = `${API_BASE_URL}/appointment`;
+  console.log('[API] ============================================');
+  console.log('[API] createAppointment - URL:', url);
+  console.log('[API] createAppointment - Payload:', JSON.stringify(data, null, 2));
+  console.log('[API] API_BASE_URL:', API_BASE_URL);
+  console.log('[API] process.env.EXPO_PUBLIC_API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
+  console.log('[API] ============================================');
+  
+  try {
+    console.log('[API] Sending fetch request...');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    console.log('[API] Response received - Status:', response.status);
+    console.log('[API] Response OK:', response.ok);
+    
+    const responseData = await response.json();
+    console.log('[API] Response data:', responseData);
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      // Backend trả về format: { success: false, message, errorCode }
+      const errorMessage = responseData.message || `Lỗi ${response.status}: Không thể tạo cuộc hẹn`;
+      const error = new Error(errorMessage);
+      (error as any).errorCode = responseData.errorCode;
+      (error as any).status = response.status;
+      throw error;
   }
   
-  return response.json();
+    return responseData;
+  } catch (error: any) {
+    // Nếu là network error hoặc lỗi khác
+    if (error.message === 'Network request failed' || error.message?.includes('Network')) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy và API URL đúng.');
+    }
+    throw error;
+  }
 };
