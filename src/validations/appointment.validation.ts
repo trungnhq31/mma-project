@@ -2,7 +2,7 @@ import { body } from 'express-validator';
 import { ServiceMode } from '../models/enums/ServiceMode';
 
 export const validateCreateAppointment = [
-  body('customerId').optional().isUUID(),
+  body('customerId').optional().isString(),
   body('customerFullName').isString().trim().notEmpty(),
   body('customerPhoneNumber').isString().trim().notEmpty(),
   body('customerEmail').isEmail().normalizeEmail(),
