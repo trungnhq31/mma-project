@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { Appointment } from '../models';
+import { AppointmentModel } from '../models/mongoose';
 import { success, error } from '../utils/response.util';
 
 export async function createAppointment(req: Request, res: Response) {
@@ -23,7 +23,7 @@ export async function createAppointment(req: Request, res: Response) {
     notes,
   } = req.body;
 
-  const created = await Appointment.create({
+  const created = await AppointmentModel.create({
     // customerId is optional & not persisted in current Appointment model
     customerFullName,
     customerPhoneNumber,
@@ -38,6 +38,6 @@ export async function createAppointment(req: Request, res: Response) {
     status: 'PENDING',
   });
 
-  return success(res, created.id, 'Appointment created');
+  return success(res, String((created as any)._id), 'Appointment created');
 }
 

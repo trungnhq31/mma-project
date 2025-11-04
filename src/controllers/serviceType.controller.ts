@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
-import { ServiceType, VehicleType } from '../models';
+import { ServiceTypeModel, VehicleTypeModel } from '../models/mongoose';
 import { success } from '../utils/response.util';
 
 type PlainServiceType = any;
@@ -20,36 +19,32 @@ export async function getServiceTypesTreeByVehicleType(req: Request, res: Respon
   const keyword = (req.query.keyword as string) || '';
   const isActiveParam = (req.query.isActive as string) ?? 'true';
 
-  const where: any = { vehicleTypeId, isDeleted: false };
+  const filter: any = { vehicleTypeId, isDeleted: false, isActive: String(isActiveParam).toLowerCase() === 'true' };
   if (keyword) {
-    where[Op.or] = [
-      { serviceName: { [Op.iLike]: `%${keyword}%` } },
-      { description: { [Op.iLike]: `%${keyword}%` } },
+    filter.$or = [
+      { serviceName: { $regex: keyword, $options: 'i' } },
+      { description: { $regex: keyword, $options: 'i' } },
     ];
   }
-  where.isActive = String(isActiveParam).toLowerCase() === 'true';
 
-  const { rows, count } = await ServiceType.findAndCountAll({
-    where,
-    offset: page * pageSize,
-    limit: pageSize,
-    order: [['createdAt', 'DESC']],
-    include: [{ model: VehicleType, as: 'vehicleType' }],
-  });
+  const count = await ServiceTypeModel.countDocuments(filter);
+  const rows = await ServiceTypeModel.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(page * pageSize)
+    .limit(pageSize)
+    .lean();
 
-  const plain = rows.map((r) => {
-    const v = r.get({ plain: true }) as any;
-    const { id, vehicleType, ...rest } = v;
-    const vehicleTypeResponse = vehicleType
-      ? (({ id: vtId, ...other }) => ({ vehicleTypeId: vtId, ...other }))(vehicleType)
-      : null;
-    return {
-      serviceTypeId: id,
-      ...rest,
-      vehicleTypeResponse,
-      serviceTypeVehiclePartResponses: [],
-    };
-  });
+  const vehicleType = await VehicleTypeModel.findById(vehicleTypeId).lean();
+  const vehicleTypeResponse = vehicleType
+    ? (({ _id, ...other }: any) => ({ vehicleTypeId: _id, ...other }))(vehicleType)
+    : null;
+
+  const plain = rows.map(({ _id, ...rest }: any) => ({
+    serviceTypeId: _id,
+    ...rest,
+    vehicleTypeResponse,
+    serviceTypeVehiclePartResponses: [],
+  }));
 
   const tree = buildTree(plain);
   return success(res, {

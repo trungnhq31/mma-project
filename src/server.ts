@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import { v1Router } from './routes';
 import { errorHandler } from './middlewares/errorHandler.middleware';
 import { logger } from './utils/logger.util';
-import { sequelize } from './config/database';
+import { connectMongo } from './config/database';
 
 dotenv.config();
 
@@ -25,12 +25,8 @@ const PORT = process.env.PORT || 3000;
 
 async function bootstrap() {
   try {
-    await sequelize.authenticate();
-    logger.info('Database connection established');
-    if ((process.env.NODE_ENV || 'development') === 'development') {
-      await sequelize.sync({ alter: true });
-      logger.info('Database synchronized');
-    }
+    await connectMongo();
+    logger.info('MongoDB connection established');
   } catch (err) {
     logger.error('Database connection failed', { error: err });
   }

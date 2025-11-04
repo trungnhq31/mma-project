@@ -1,14 +1,7 @@
-import { Sequelize } from 'sequelize';
+import mongoose from 'mongoose';
 
-export const sequelize = new Sequelize(
-  process.env.DB_NAME || 'evcare_db',
-  process.env.DB_USER || 'postgres',
-  process.env.DB_PASS || 'postgres',
-  {
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 5432),
-    dialect: 'postgres',
-    logging: false,
-  }
-);
+export async function connectMongo(): Promise<void> {
+  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/evcare_db';
+  await mongoose.connect(uri);
+}
 
