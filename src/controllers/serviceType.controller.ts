@@ -1,32 +1,24 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
-import { ServiceType } from '../models';
+import { ServiceType, VehicleType } from '../models';
 import { success } from '../utils/response.util';
 
-type ServiceTypeNode = any;
+type PlainServiceType = any;
 
-function buildTree(items: ServiceType[], parentId: string | null = null): ServiceTypeNode[] {
+function buildTree(items: PlainServiceType[], parentId: string | null = null): PlainServiceType[] {
   const nodes = items.filter((it) => (it.parentId ?? null) === parentId);
   return nodes.map((n) => ({
-    id: n.id,
-    serviceName: n.serviceName,
-    description: n.description,
-    estimatedDurationMinutes: n.estimatedDurationMinutes,
-    vehicleTypeId: n.vehicleTypeId,
-    parentId: n.parentId,
-    isActive: n.isActive,
-    isDeleted: n.isDeleted,
-    children: buildTree(items, n.id),
-    serviceTypeVehiclePartResponses: [], // placeholder as yêu cầu nhắc nhưng chưa có model vehicle part
+    ...n,
+    children: buildTree(items, n.serviceTypeId),
   }));
 }
 
 export async function getServiceTypesTreeByVehicleType(req: Request, res: Response) {
   const vehicleTypeId = req.params.vehicleTypeId;
   const page = Math.max(0, parseInt((req.query.page as string) || '0', 10));
-  const pageSize = Math.max(1, parseInt((req.query.pageSize as string) || '1000', 10));
+  const pageSize = Math.max(1, parseInt((req.query.pageSize as string) || '10', 10));
   const keyword = (req.query.keyword as string) || '';
-  const isActive = (req.query.isActive as string) ?? undefined;
+  const isActiveParam = (req.query.isActive as string) ?? 'true';
 
   const where: any = { vehicleTypeId, isDeleted: false };
   if (keyword) {
@@ -35,18 +27,31 @@ export async function getServiceTypesTreeByVehicleType(req: Request, res: Respon
       { description: { [Op.iLike]: `%${keyword}%` } },
     ];
   }
-  if (typeof isActive !== 'undefined') {
-    where.isActive = String(isActive).toLowerCase() === 'true';
-  }
+  where.isActive = String(isActiveParam).toLowerCase() === 'true';
 
   const { rows, count } = await ServiceType.findAndCountAll({
     where,
     offset: page * pageSize,
     limit: pageSize,
     order: [['createdAt', 'DESC']],
+    include: [{ model: VehicleType, as: 'vehicleType' }],
   });
 
-  const tree = buildTree(rows);
+  const plain = rows.map((r) => {
+    const v = r.get({ plain: true }) as any;
+    const { id, vehicleType, ...rest } = v;
+    const vehicleTypeResponse = vehicleType
+      ? (({ id: vtId, ...other }) => ({ vehicleTypeId: vtId, ...other }))(vehicleType)
+      : null;
+    return {
+      serviceTypeId: id,
+      ...rest,
+      vehicleTypeResponse,
+      serviceTypeVehiclePartResponses: [],
+    };
+  });
+
+  const tree = buildTree(plain);
   return success(res, {
     data: tree,
     page,

@@ -27,6 +27,10 @@ async function bootstrap() {
   try {
     await sequelize.authenticate();
     logger.info('Database connection established');
+    if ((process.env.NODE_ENV || 'development') === 'development') {
+      await sequelize.sync({ alter: true });
+      logger.info('Database synchronized');
+    }
   } catch (err) {
     logger.error('Database connection failed', { error: err });
   }

@@ -10,6 +10,7 @@ export async function createAppointment(req: Request, res: Response) {
   }
 
   const {
+    customerId,
     customerFullName,
     customerPhoneNumber,
     customerEmail,
@@ -23,6 +24,7 @@ export async function createAppointment(req: Request, res: Response) {
   } = req.body;
 
   const created = await Appointment.create({
+    // customerId is optional & not persisted in current Appointment model
     customerFullName,
     customerPhoneNumber,
     customerEmail,

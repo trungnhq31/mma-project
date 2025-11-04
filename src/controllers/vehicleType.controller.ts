@@ -25,8 +25,14 @@ export async function getVehicleTypes(req: Request, res: Response) {
     order: [['createdAt', 'DESC']],
   });
 
+  const mapped = rows.map((r) => {
+    const v = r.get({ plain: true }) as any;
+    const { id, ...rest } = v;
+    return { vehicleTypeId: id, ...rest };
+  });
+
   return success(res, {
-    data: rows,
+    data: mapped,
     page,
     size: pageSize,
     totalElements: count,
