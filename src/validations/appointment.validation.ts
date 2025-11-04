@@ -6,7 +6,7 @@ export const validateCreateAppointment = [
   body('customerFullName').isString().trim().notEmpty(),
   body('customerPhoneNumber').isString().trim().notEmpty(),
   body('customerEmail').isEmail().normalizeEmail(),
-  body('vehicleTypeId').isUUID(),
+  body('vehicleTypeId').isMongoId(),
   body('vehicleNumberPlate').isString().trim().notEmpty(),
   body('vehicleKmDistances').isString().trim().notEmpty(),
   body('userAddress').isString().trim().notEmpty(),
