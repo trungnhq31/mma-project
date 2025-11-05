@@ -204,6 +204,7 @@ const ProfileScreen = () => {
               await apiLogout(user.userId);
             } catch {}
             clearAuth();
+            try { (global as any).__SET_LOGGED_IN__?.(false); } catch {}
             Alert.alert('Thông báo', 'Đã đăng xuất');
           }}
         >
