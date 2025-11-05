@@ -33,6 +33,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
+    "@react-native-community/cli": "^13.6.2",
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },
