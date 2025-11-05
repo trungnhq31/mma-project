@@ -22,7 +22,7 @@ export default function BookingDetailScreen({ route }: BookingDetailProps) {
   useEffect(() => {
     const load = async () => {
       try {
-        if (booking?.id && !detail) {
+        if (booking?.id) {
           const res = await getBookingDetail(booking.id);
           setDetail(res.data);
         }
@@ -31,7 +31,8 @@ export default function BookingDetailScreen({ route }: BookingDetailProps) {
       }
     };
     load();
-  }, [booking, detail]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?.id]);
 
   const phone = detail?.customerPhoneNumber || '';
   const email = detail?.customerEmail || '';
