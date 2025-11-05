@@ -61,6 +61,9 @@ const ProfileScreen = () => {
   });
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   
   // Form field handlers
   const handleInputChange = (field: string, value: string) => {
@@ -404,33 +407,48 @@ const ProfileScreen = () => {
         </TouchableWithoutFeedback>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
-          <TextInput
-            style={[styles.input, passwordErrors.currentPassword && styles.inputError]}
-            value={passwordData.currentPassword}
-            onChangeText={(text) => handlePasswordChange('currentPassword', text)}
-            placeholder="Mật khẩu hiện tại"
-            secureTextEntry
-          />
+          <View style={[styles.input, styles.inputRow, passwordErrors.currentPassword && styles.inputError]}>
+            <TextInput
+              style={styles.inputFlex}
+              value={passwordData.currentPassword}
+              onChangeText={(text) => handlePasswordChange('currentPassword', text)}
+              placeholder="Mật khẩu hiện tại"
+              secureTextEntry={!showCurrentPwd}
+            />
+            <TouchableOpacity onPress={() => setShowCurrentPwd(v => !v)}>
+              <Ionicons name={showCurrentPwd ? 'eye-off' : 'eye'} size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
           {passwordErrors.currentPassword && (
             <Text style={styles.errorText}>{passwordErrors.currentPassword}</Text>
           )}
-          <TextInput
-            style={[styles.input, passwordErrors.newPassword && styles.inputError]}
-            value={passwordData.newPassword}
-            onChangeText={(text) => handlePasswordChange('newPassword', text)}
-            placeholder="Mật khẩu mới"
-            secureTextEntry
-          />
+          <View style={[styles.input, styles.inputRow, passwordErrors.newPassword && styles.inputError]}>
+            <TextInput
+              style={styles.inputFlex}
+              value={passwordData.newPassword}
+              onChangeText={(text) => handlePasswordChange('newPassword', text)}
+              placeholder="Mật khẩu mới"
+              secureTextEntry={!showNewPwd}
+            />
+            <TouchableOpacity onPress={() => setShowNewPwd(v => !v)}>
+              <Ionicons name={showNewPwd ? 'eye-off' : 'eye'} size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
           {passwordErrors.newPassword && (
             <Text style={styles.errorText}>{passwordErrors.newPassword}</Text>
           )}
-          <TextInput
-            style={[styles.input, passwordErrors.confirmPassword && styles.inputError]}
-            value={passwordData.confirmPassword}
-            onChangeText={(text) => handlePasswordChange('confirmPassword', text)}
-            placeholder="Xác nhận mật khẩu mới"
-            secureTextEntry
-          />
+          <View style={[styles.input, styles.inputRow, passwordErrors.confirmPassword && styles.inputError]}>
+            <TextInput
+              style={styles.inputFlex}
+              value={passwordData.confirmPassword}
+              onChangeText={(text) => handlePasswordChange('confirmPassword', text)}
+              placeholder="Xác nhận mật khẩu mới"
+              secureTextEntry={!showConfirmPwd}
+            />
+            <TouchableOpacity onPress={() => setShowConfirmPwd(v => !v)}>
+              <Ionicons name={showConfirmPwd ? 'eye-off' : 'eye'} size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
           {passwordErrors.confirmPassword && (
             <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text>
           )}
@@ -561,6 +579,15 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 5,
     backgroundColor: '#fff',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 12,
+  },
+  inputFlex: {
+    flex: 1,
   },
   inputError: {
     borderColor: 'red',
