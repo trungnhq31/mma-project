@@ -440,6 +440,12 @@ const ProfileScreen = () => {
           >
             <Text style={styles.changePasswordButtonText}>Đổi mật khẩu</Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.changePasswordButton, { backgroundColor: '#9e9e9e' }]} 
+            onPress={togglePasswordModal}
+          >
+            <Text style={styles.changePasswordButtonText}>Hủy</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </ScrollView>

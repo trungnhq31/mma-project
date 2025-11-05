@@ -323,6 +323,24 @@ export const logout = async (
 };
 
 /**
+ * PATCH /api/v1/auth/change-password
+ */
+export const changePassword = async (
+  oldPassword: string,
+  newPassword: string
+): Promise<ApiResponse<string>> => {
+  const url = `${API_BASE_URL}/auth/change-password`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ oldPassword, newPassword }),
+  });
+  const json = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(json.message || `HTTP ${resp.status}`);
+  return json;
+};
+
+/**
  * PATCH /api/v1/user/profile/:id
  */
 export const updateUserProfile = async (
