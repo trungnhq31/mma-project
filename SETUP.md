@@ -22,6 +22,9 @@ npm install --legacy-peer-deps
 # MONGO_URI=mongodb://127.0.0.1:27017/evcare_db
 # JWT_SECRET=your_very_secure_secret_key_here
 # JWT_REFRESH_SECRET=your_refresh_secret
+# SEPAY_API_KEY=your_sepay_api_key
+# PAYMENT_BANK_NAME=Vietcombank
+# PAYMENT_ACCOUNT_NUMBER=0010000000355
 
 # Seed dữ liệu (lần đầu)
 npm run seed
@@ -31,6 +34,40 @@ npm run dev
 ```
 
 **Kiểm tra:** `http://localhost:3000/api/v1/appointment/service-mode`
+
+### Webhook SePay
+- Endpoint: `POST http://localhost:3000/api/v1/payment/webhook`
+- Header: `Authorization: Apikey <SEPAY_API_KEY>` (nếu set trong `.env`)
+- Body: JSON theo tài liệu SePay. Server phản hồi `{ "success": true }` với HTTP 201 khi thành công.
+- Tham chiếu: [SePay Webhooks](https://docs.sepay.vn/tich-hop-webhooks.html)
+
+### Tạo QR Payment (client gọi)
+- Endpoint: `POST http://localhost:3000/api/v1/payment/create-qr`
+- Body:
+  ```json
+  {
+    "amount": 2277000,
+    "description": "Thanh toan don #1234",
+    "bank": "Vietcombank",            // optional, default từ .env
+    "accountNumber": "0010000000355", // optional, default từ .env
+    "referenceId": "ORDER_1234"       // optional
+  }
+  ```
+- Response:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "qrUrl": "https://qr.sepay.vn/img?acc=...&bank=...&amount=...&des=...",
+      "amount": 2277000,
+      "bank": "Vietcombank",
+      "accountNumber": "0010000000355",
+      "content": "Thanh toan don #1234 CODE:ABCD123456",
+      "code": "ABCD123456"
+    }
+  }
+  ```
+- Lưu ý: Mã `code` sẽ được chèn vào nội dung chuyển khoản để đối soát khi nhận webhook.
 
 ---
 

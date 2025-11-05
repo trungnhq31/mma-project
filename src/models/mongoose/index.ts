@@ -81,3 +81,29 @@ UserSchema.index({ email: 1 }, { unique: true });
 
 export const UserModel = model('User', UserSchema);
 
+// SePay Payment Transaction (Webhook)
+const PaymentTransactionSchema = new Schema(
+  {
+    sepayId: { type: Number, required: true, unique: true },
+    gateway: { type: String },
+    transactionDate: { type: Date },
+    accountNumber: { type: String },
+    code: { type: String, default: null },
+    content: { type: String },
+    transferType: { type: String, enum: ['in', 'out'] },
+    transferAmount: { type: Number },
+    accumulated: { type: Number },
+    subAccount: { type: String, default: null },
+    referenceCode: { type: String },
+    description: { type: String },
+    raw: { type: Object },
+    processed: { type: Boolean, default: false },
+    relatedAppointmentId: { type: Schema.Types.ObjectId, ref: 'Appointment', default: null },
+  },
+  { timestamps: true }
+);
+
+PaymentTransactionSchema.index({ sepayId: 1 }, { unique: true });
+
+export const PaymentTransactionModel = model('PaymentTransaction', PaymentTransactionSchema);
+
