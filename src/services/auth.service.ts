@@ -76,6 +76,7 @@ export async function loginUser(input: { email: string; password: string }) {
   const refreshToken = signRefreshToken(payload);
 
   return {
+    userId: String((user as any)._id),
     authenticated: true,
     token,
     refreshToken,
