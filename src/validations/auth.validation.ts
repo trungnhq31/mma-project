@@ -15,4 +15,8 @@ export const validateLogin = [
   body('password').isString().isLength({ min: 6 }),
 ];
 
+export const validateLogout = [
+  body('userId').isString().trim().notEmpty(),
+];
+
 

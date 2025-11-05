@@ -26,6 +26,18 @@ export async function register(req: Request, res: Response) {
   }
 }
 
+export async function logout(req: Request, res: Response) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return error(res, 400, 'Validation error', 'VALIDATION_ERROR');
+  }
+
+  const { userId } = req.body as { userId: string };
+
+  // Placeholder: Without Redis/session store, JWT is stateless; respond success
+  return success(res, `User ${userId} logged out`, 'Logged out successfully');
+}
+
 export async function login(req: Request, res: Response) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
