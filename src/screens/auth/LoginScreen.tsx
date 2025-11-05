@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
+import { login } from '../../services/api';
 
 type LoginScreenProps = {
   onLoginSuccess?: () => void;
@@ -11,6 +12,8 @@ type LoginScreenProps = {
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
   
@@ -18,21 +21,27 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const routeParams = route.params as { onLoginSuccess?: () => void } | undefined;
   const handleLoginSuccess = routeParams?.onLoginSuccess || onLoginSuccess;
 
-  const handleLogin = () => {
-    // Hardcoded credentials for demo
-    if (email === 'user@example.com' && password === 'password') {
-      // Call the login success handler if provided
-      if (handleLoginSuccess) {
-        handleLoginSuccess();
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Lỗi', 'Vui lòng nhập Email và Mật khẩu');
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await login(email, password);
+      if (res?.data?.authenticated) {
+        if (handleLoginSuccess) {
+          handleLoginSuccess();
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        }
       } else {
-        // Fallback navigation
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
+        Alert.alert('Lỗi', 'Email hoặc mật khẩu không đúng');
       }
-    } else {
-      Alert.alert('Lỗi', 'Email hoặc mật khẩu không đúng');
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.message || 'Đăng nhập thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,16 +58,22 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         autoCapitalize="none"
       />
       
-      <TextInput
-        style={styles.input}
-        placeholder="Mật khẩu"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View style={styles.passwordWrapper}>
+        <TextInput
+          style={[styles.input, styles.passwordInput]}
+          placeholder="Mật khẩu"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
+          <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+        </TouchableOpacity>
+      </View>
       
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Đăng nhập</Text>
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</Text>
       </TouchableOpacity>
       
       <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -89,6 +104,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     fontSize: 16,
+  },
+  passwordWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 44,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 10,
+    height: 50,
+    width: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyeText: {
+    fontSize: 18,
   },
   button: {
     backgroundColor: '#007AFF',
