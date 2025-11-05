@@ -67,6 +67,7 @@ const UserSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     fullName: { type: String, required: true },
     numberPhone: { type: String },
+    address: { type: String },
     avatarUrl: { type: String },
     provider: { type: String, default: 'local' },
     isActive: { type: Boolean, default: true },
