@@ -13,6 +13,7 @@ import HomeScreen from '../screens/HomeScreen';
 import BookAppointmentScreen from '../screens/BookAppointmentScreen';
 import BookingHistoryScreen from '../screens/history/BookingHistoryScreen';
 import BookingDetailScreen from '../screens/history/BookingDetailScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 // Types for navigation
 import { RootStackParamList, MainTabParamList } from './types';
@@ -34,6 +35,8 @@ function MainTabs() {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'BookingHistory') {
             iconName = focused ? 'time' : 'time-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -57,6 +60,11 @@ function MainTabs() {
         name="BookingHistory" 
         component={BookingHistoryScreen} 
         options={{ title: 'Lịch sử' }} 
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ title: 'Tôi' }} 
       />
     </Tab.Navigator>
   );
