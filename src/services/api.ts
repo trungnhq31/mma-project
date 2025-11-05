@@ -294,3 +294,42 @@ export const login = async (
   if (json?.data?.token) setAuthToken(json.data.token);
   return json;
 };
+
+/**
+ * POST /api/v1/auth/register
+ */
+export const register = async (
+  fullName: string,
+  email: string,
+  password: string,
+  numberPhone?: string
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; token: string; refreshToken: string }>> => {
+  const url = `${API_BASE_URL}/auth/register`;
+  const username = email.split('@')[0];
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ username, password, email, fullName, numberPhone, provider: 'local' }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  if (json?.data?.token) setAuthToken(json.data.token);
+  return json;
+};
+
+/**
+ * GET /api/v1/appointment/:id
+ */
+export const getBookingDetail = async (
+  appointmentId: string
+): Promise<ApiResponse<any>> => {
+  const url = `${API_BASE_URL}/appointment/${appointmentId}`;
+  const response = await fetch(url, { headers: withAuthHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  return json;
+};

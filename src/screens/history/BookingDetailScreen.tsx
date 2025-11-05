@@ -1,23 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
+import { getBookingDetail } from '../../services/api';
 
-type Booking = {
-  id: string;
-  customerName: string;
-  serviceName: string;
-  bookingDate: string;
-  status: string;
-  details: {
-    phone: string;
-    email: string;
-    vehicleType: string;
-    licensePlate: string;
-    serviceType: string;
-    address: string;
-    notes?: string;
-  };
-};
+type Booking = any;
 
 type RootStackParamList = {
   BookingDetail: { booking: Booking };
@@ -31,42 +17,69 @@ interface BookingDetailProps {
 
 export default function BookingDetailScreen({ route }: BookingDetailProps) {
   const { booking } = route.params;
+  const [detail, setDetail] = useState<any>(booking?.raw || null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (booking?.id && !detail) {
+          const res = await getBookingDetail(booking.id);
+          setDetail(res.data);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    load();
+  }, [booking, detail]);
+
+  const phone = detail?.customerPhoneNumber || '';
+  const email = detail?.customerEmail || '';
+  const vehicleTypeName = detail?.vehicleTypeName || '';
+  const licensePlate = detail?.vehicleNumberPlate || '';
+  const serviceMode = detail?.serviceMode === 'MOBILE' ? 'Tại nhà' : 'Tại trung tâm';
+  const address = detail?.userAddress || '';
+  const notes = detail?.notes || '';
+  const bookingDate = detail?.scheduledAt || booking?.bookingDate;
+  const status = detail?.status || booking?.status;
+  const orderId = detail?.appointmentId || booking?.id;
+  const customerName = detail?.customerFullName || booking?.customerName;
   
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin đặt lịch</Text>
-        <DetailRow label="Mã đơn hàng" value={booking.id} />
-        <DetailRow label="Ngày đặt" value={new Date(booking.bookingDate).toLocaleString()} />
+        <DetailRow label="Mã đơn hàng" value={orderId} />
+        <DetailRow label="Ngày đặt" value={new Date(bookingDate).toLocaleString()} />
         <DetailRow 
           label="Trạng thái" 
-          value={booking.status}
-          valueStyle={booking.status === 'Đã xác nhận' ? styles.statusConfirmed : styles.statusPending}
+          value={status}
+          valueStyle={status === 'Đã xác nhận' ? styles.statusConfirmed : styles.statusPending}
         />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin khách hàng</Text>
-        <DetailRow label="Họ và tên" value={booking.customerName} />
-        <DetailRow label="Số điện thoại" value={booking.details.phone} />
-        <DetailRow label="Email" value={booking.details.email} />
+        <DetailRow label="Họ và tên" value={customerName} />
+        {!!phone && <DetailRow label="Số điện thoại" value={phone} />}
+        {!!email && <DetailRow label="Email" value={email} />}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin xe</Text>
-        <DetailRow label="Dòng xe" value={booking.details.vehicleType} />
-        <DetailRow label="Biển số xe" value={booking.details.licensePlate} />
+        {!!vehicleTypeName && <DetailRow label="Dòng xe" value={vehicleTypeName} />}
+        {!!licensePlate && <DetailRow label="Biển số xe" value={licensePlate} />}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin dịch vụ</Text>
-        <DetailRow label="Dịch vụ" value={booking.serviceName} />
-        <DetailRow label="Hình thức" value={booking.details.serviceType} />
-        {booking.details.serviceType === 'Tại nhà' && (
-          <DetailRow label="Địa chỉ" value={booking.details.address} />
+        {!!booking?.serviceName && <DetailRow label="Dịch vụ" value={booking.serviceName} />}
+        <DetailRow label="Hình thức" value={serviceMode} />
+        {serviceMode === 'Tại nhà' && !!address && (
+          <DetailRow label="Địa chỉ" value={address} />
         )}
-        {booking.details.notes && (
-          <DetailRow label="Ghi chú" value={booking.details.notes} />
+        {!!notes && (
+          <DetailRow label="Ghi chú" value={notes} />
         )}
       </View>
     </ScrollView>

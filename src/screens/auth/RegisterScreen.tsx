@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
+import { register as registerApi } from '../../services/api';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -12,16 +13,23 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (password !== confirmPassword) {
       Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
       return;
     }
-    
-    // In a real app, you would make an API call here
-    Alert.alert('Thành công', 'Đăng ký tài khoản thành công!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+    try {
+      const res = await registerApi(name, email, password, phone);
+      if (res?.success) {
+        Alert.alert('Thành công', 'Đăng ký tài khoản thành công!', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        Alert.alert('Lỗi', res?.message || 'Đăng ký thất bại');
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.message || 'Đăng ký thất bại');
+    }
   };
 
   return (
