@@ -1,16 +1,41 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getUserProfile } from '../services/api';
 
 const ProfileScreen = () => {
-  // Hardcoded user data
-  const userData = {
-    name: 'Nguyễn Văn A',
-    email: 'user@example.com',
-    phone: '0987 654 321',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-  };
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{
+    userId: string;
+    fullName: string;
+    email: string;
+    numberPhone?: string;
+    address?: string;
+    avatarUrl?: string;
+  } | null>(null);
+
+  // TODO: lấy userId thực tế từ state sau login; tạm thời giả sử backend trả về và đã lưu ở đâu đó
+  // Ở bản tích hợp tối thiểu, bạn có thể truyền userId qua params hoặc lưu trong một store/context
+  const inferredUserId = (global as any).__USER_ID__ || '';
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (!inferredUserId) {
+          setLoading(false);
+          return;
+        }
+        const res = await getUserProfile(inferredUserId);
+        setUser(res.data);
+      } catch (e: any) {
+        Alert.alert('Lỗi', e?.message || 'Không tải được hồ sơ');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inferredUserId]);
 
   const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
     <View style={styles.infoRow}>
@@ -24,40 +49,38 @@ const ProfileScreen = () => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  const avatar = user?.avatarUrl || 'https://placehold.co/200x200?text=Avatar';
+  const name = user?.fullName || '';
+  const email = user?.email || '';
+  const phone = user?.numberPhone || '';
+  const address = user?.address || '';
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={{ uri: userData.avatar }} style={styles.avatar} />
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.email}>{userData.email}</Text>
+        <Image source={{ uri: avatar }} style={styles.avatar} />
+        <Text style={styles.name}>{name}</Text>
+        <Text style={styles.email}>{email}</Text>
       </View>
 
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
         
-        <InfoRow 
-          icon="person-outline" 
-          label="Họ và tên" 
-          value={userData.name} 
-        />
+        <InfoRow icon="person-outline" label="Họ và tên" value={name} />
         
-        <InfoRow 
-          icon="mail-outline" 
-          label="Email" 
-          value={userData.email} 
-        />
+        <InfoRow icon="mail-outline" label="Email" value={email} />
         
-        <InfoRow 
-          icon="call-outline" 
-          label="Số điện thoại" 
-          value={userData.phone} 
-        />
+        {!!phone && <InfoRow icon="call-outline" label="Số điện thoại" value={phone} />}
         
-        <InfoRow 
-          icon="location-outline" 
-          label="Địa chỉ" 
-          value={userData.address} 
-        />
+        {!!address && <InfoRow icon="location-outline" label="Địa chỉ" value={address} />}
       </View>
 
       <View style={styles.actionsContainer}>

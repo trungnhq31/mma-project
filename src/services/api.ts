@@ -316,6 +316,21 @@ export const updateUserProfile = async (
 };
 
 /**
+ * GET /api/v1/user/profile/:id
+ */
+export const getUserProfile = async (
+  id: string
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; numberPhone?: string; address?: string; avatarUrl?: string }>> => {
+  const url = `${API_BASE_URL}/user/profile/${id}`;
+  const response = await fetch(url, { headers: withAuthHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  return json;
+};
+
+/**
  * POST /api/v1/auth/register
  */
 export const register = async (
