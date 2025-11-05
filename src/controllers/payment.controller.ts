@@ -67,6 +67,7 @@ export async function createQrPayment(req: Request, res: Response) {
       description,
       bank = process.env.PAYMENT_BANK_NAME,
       accountNumber = process.env.PAYMENT_ACCOUNT_NUMBER,
+      accountName = process.env.PAYMENT_ACCOUNT_NAME,
       referenceId,
     } = req.body || {};
 
@@ -96,6 +97,7 @@ export async function createQrPayment(req: Request, res: Response) {
         amount: Number(amount),
         bank,
         accountNumber,
+        accountName,
         content,
         code: shortCode,
       },

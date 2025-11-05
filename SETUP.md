@@ -25,6 +25,7 @@ npm install --legacy-peer-deps
 # SEPAY_API_KEY=your_sepay_api_key
 # PAYMENT_BANK_NAME=Vietcombank
 # PAYMENT_ACCOUNT_NUMBER=0010000000355
+# PAYMENT_ACCOUNT_NAME=CONG TY ABC
 
 # Seed dữ liệu (lần đầu)
 npm run seed
@@ -34,6 +35,14 @@ npm run dev
 ```
 
 **Kiểm tra:** `http://localhost:3000/api/v1/appointment/service-mode`
+
+### Bật Swagger Docs
+```powershell
+npm install swagger-ui-express swagger-jsdoc
+```
+Sau đó khởi động lại và truy cập:
+- Swagger UI: `http://localhost:3000/api-docs`
+- OpenAPI JSON: `http://localhost:3000/api-json`
 
 ### Webhook SePay
 - Endpoint: `POST http://localhost:3000/api/v1/payment/webhook`
@@ -50,6 +59,7 @@ npm run dev
     "description": "Thanh toan don #1234",
     "bank": "Vietcombank",            // optional, default từ .env
     "accountNumber": "0010000000355", // optional, default từ .env
+    "accountName": "CONG TY ABC",     // optional, default từ .env
     "referenceId": "ORDER_1234"       // optional
   }
   ```
@@ -62,6 +72,7 @@ npm run dev
       "amount": 2277000,
       "bank": "Vietcombank",
       "accountNumber": "0010000000355",
+      "accountName": "CONG TY ABC",
       "content": "Thanh toan don #1234 CODE:ABCD123456",
       "code": "ABCD123456"
     }

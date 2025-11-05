@@ -7,6 +7,8 @@ import { v1Router } from './routes';
 import { errorHandler } from './middlewares/errorHandler.middleware';
 import { logger } from './utils/logger.util';
 import { connectMongo } from './config/database';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './docs/swagger';
 
 dotenv.config();
 
@@ -18,6 +20,10 @@ app.use(express.json());
 app.use(morgan('combined'));
 
 app.use('/api/v1', v1Router);
+
+// Swagger docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api-json', (_req, res) => res.json(swaggerSpec));
 
 app.use(errorHandler);
 
