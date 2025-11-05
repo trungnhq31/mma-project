@@ -186,24 +186,19 @@ const BookAppointmentScreen = () => {
         try {
           const response = await getServiceTypesByVehicleType(vehicleId, 0, 1000, '', true);
           if (response.success && response.data.data) {
-            // Flatten tree structure for easier rendering
-            const flattenServices = (items: ServiceTypeResponse[]): ServiceType[] => {
-              const result: ServiceType[] = [];
-              items.forEach(item => {
-                result.push({
-                  serviceTypeId: item.serviceTypeId,
-                  serviceName: item.serviceName,
-                  description: item.description,
-                  estimatedDurationMinutes: item.estimatedDurationMinutes,
-                  parentId: item.parentId,
-                  isActive: item.isActive,
-                  isDeleted: item.isDeleted,
-                  children: item.children ? flattenServices(item.children) : undefined,
-                });
-              });
-              return result;
-            };
-            setServices(flattenServices(response.data.data));
+            // Map giữ đúng cấu trúc cây (không flatten) để tránh trùng lặp
+            const mapTree = (items: ServiceTypeResponse[]): ServiceType[] =>
+              items.map(item => ({
+                serviceTypeId: item.serviceTypeId,
+                serviceName: item.serviceName,
+                description: item.description,
+                estimatedDurationMinutes: item.estimatedDurationMinutes,
+                parentId: item.parentId,
+                isActive: item.isActive,
+                isDeleted: item.isDeleted,
+                children: item.children ? mapTree(item.children) : undefined,
+              }));
+            setServices(mapTree(response.data.data));
           }
         } catch (error) {
           console.error('Error fetching services:', error);
@@ -235,20 +230,19 @@ const BookAppointmentScreen = () => {
     });
   };
   
-  const selectAllChildren = (service: ServiceType, select: boolean) => {
-    if (!service.children || service.children.length === 0) {
-      if (select) {
-        if (!selectedServices.includes(service.serviceTypeId)) {
-          setSelectedServices(prev => [...prev, service.serviceTypeId]);
-        }
-      } else {
-        setSelectedServices(prev => prev.filter(id => id !== service.serviceTypeId));
+  const collectDescendants = (s: ServiceType): string[] => {
+    const ids: string[] = [];
+    const walk = (node?: ServiceType) => {
+      if (!node) return;
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+          ids.push(child.serviceTypeId);
+          walk(child);
+        });
       }
-      return;
-    }
-    
-    // Process all children recursively
-    service.children.forEach(child => selectAllChildren(child, select));
+    };
+    walk(s);
+    return ids;
   };
 
   const toggleService = (serviceId: string) => {
@@ -262,47 +256,19 @@ const BookAppointmentScreen = () => {
     if (!selectedVehicleTypeId) return;
     
     const isCurrentlySelected = selectedServices.includes(serviceId);
-    
+    const descendants = collectDescendants(service);
     if (isCurrentlySelected) {
-      // If service is selected, deselect it and all its children
-      const newSelectedServices = selectedServices.filter(id => {
-        // Keep services that are not this service and not its children
-        if (id === serviceId) return false;
-        
-        // Check if this is a child of the service being toggled
-        if (service.children) {
-          const isChild = service.children.some(child => 
-            child.serviceTypeId === id || 
-            (child.children && child.children.some(grandChild => grandChild.serviceTypeId === id)
-          ));
-          return !isChild;
-        }
-        return true;
-      });
-      
-      setSelectedServices(newSelectedServices);
-      setValue('selectedServices', newSelectedServices, { shouldValidate: true });
+      // Bỏ chọn cha và toàn bộ hậu duệ
+      const toRemove = new Set([serviceId, ...descendants]);
+      const newSelected = selectedServices.filter(id => !toRemove.has(id));
+      setSelectedServices(newSelected);
+      setValue('selectedServices', newSelected, { shouldValidate: true });
     } else {
-      // If service is not selected, select it and all its children
-      const newSelectedServices = [...selectedServices, serviceId];
-      
-      // Add all children if it's a parent service
-      if (service.children && service.children.length > 0) {
-        const addChildren = (children: ServiceType[]) => {
-          children.forEach(child => {
-            if (!newSelectedServices.includes(child.serviceTypeId)) {
-              newSelectedServices.push(child.serviceTypeId);
-            }
-            if (child.children) {
-              addChildren(child.children);
-            }
-          });
-        };
-        addChildren(service.children);
-      }
-      
-      setSelectedServices(newSelectedServices);
-      setValue('selectedServices', newSelectedServices, { shouldValidate: true });
+      // Chọn cha và toàn bộ hậu duệ
+      const toAdd = [serviceId, ...descendants];
+      const merged = Array.from(new Set([...selectedServices, ...toAdd]));
+      setSelectedServices(merged);
+      setValue('selectedServices', merged, { shouldValidate: true });
     }
   };
 
