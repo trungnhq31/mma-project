@@ -121,7 +121,7 @@ const BookAppointmentScreen = () => {
     watch,
     trigger,
   } = useForm<BookingFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     mode: 'onChange',
     reValidateMode: 'onChange',
     defaultValues: {
@@ -186,7 +186,7 @@ const BookAppointmentScreen = () => {
         try {
           const response = await getServiceTypesByVehicleType(vehicleId, 0, 1000, '', true);
           if (response.success && response.data.data) {
-            // Map giữ đúng cấu trúc cây (không flatten) để tránh trùng lặp
+            // Map giữ đúng cấu trúc cây
             const mapTree = (items: ServiceTypeResponse[]): ServiceType[] =>
               items.map(item => ({
                 serviceTypeId: item.serviceTypeId,
@@ -198,7 +198,26 @@ const BookAppointmentScreen = () => {
                 isDeleted: item.isDeleted,
                 children: item.children ? mapTree(item.children) : undefined,
               }));
-            setServices(mapTree(response.data.data));
+
+            // Loại bỏ trùng theo (parentId, serviceName) trong từng cấp
+            const dedupeTree = (nodes: ServiceType[]): ServiceType[] => {
+              const seen = new Set<string>();
+              const unique: ServiceType[] = [];
+              nodes.forEach(n => {
+                const key = `${n.parentId || 'root'}|${(n.serviceName || '').trim().toLowerCase()}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  unique.push({
+                    ...n,
+                    children: n.children ? dedupeTree(n.children) : undefined,
+                  });
+                }
+              });
+              return unique;
+            };
+
+            const tree = dedupeTree(mapTree(response.data.data));
+            setServices(tree);
           }
         } catch (error) {
           console.error('Error fetching services:', error);
@@ -653,9 +672,9 @@ const BookAppointmentScreen = () => {
           ) : services.length === 0 && selectedVehicleTypeId ? (
             <Text style={styles.emptyText}>Không có dịch vụ nào cho loại xe này</Text>
           ) : (
-            <View style={styles.servicesList}>
+            <ScrollView style={styles.servicesList} contentContainerStyle={styles.servicesListContent}>
               {services.map(service => renderServiceItem(service))}
-            </View>
+            </ScrollView>
           )}
           {errors.selectedServices && (
             <Text style={styles.errorText}>{errors.selectedServices.message}</Text>
@@ -879,9 +898,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
-    maxHeight: 200,
-    overflow: 'hidden',
+    borderRadius: 8,
+    maxHeight: 320,
+    backgroundColor: '#fff',
+  },
+  servicesListContent: {
+    paddingVertical: 6,
   },
   serviceItem: {
     flexDirection: 'row',
