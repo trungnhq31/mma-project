@@ -27,11 +27,9 @@ export async function getServiceTypesTreeByVehicleType(req: Request, res: Respon
     ];
   }
 
-  const count = await ServiceTypeModel.countDocuments(filter);
-  const rows = await ServiceTypeModel.find(filter)
+  // Lấy toàn bộ service types theo vehicleType để không làm mất children khi phân trang
+  const rowsAll = await ServiceTypeModel.find(filter)
     .sort({ createdAt: -1 })
-    .skip(page * pageSize)
-    .limit(pageSize)
     .lean();
 
   const vehicleType = await VehicleTypeModel.findById(vehicleTypeId).lean();
@@ -39,21 +37,27 @@ export async function getServiceTypesTreeByVehicleType(req: Request, res: Respon
     ? (({ _id, ...other }: any) => ({ vehicleTypeId: _id, ...other }))(vehicleType)
     : null;
 
-  const plain = rows.map(({ _id, ...rest }: any) => ({
+  const plain = rowsAll.map(({ _id, ...rest }: any) => ({
     serviceTypeId: _id,
     ...rest,
     vehicleTypeResponse,
     serviceTypeVehiclePartResponses: [],
   }));
 
-  const tree = buildTree(plain);
+  const fullTree = buildTree(plain);
+  const roots = fullTree; // buildTree với parentId=null trả về danh sách gốc
+  const totalElements = roots.length;
+  const totalPages = Math.max(1, Math.ceil(totalElements / pageSize));
+  const start = page * pageSize;
+  const pagedRoots = roots.slice(start, start + pageSize);
+
   return success(res, {
-    data: tree,
+    data: pagedRoots,
     page,
     size: pageSize,
-    totalElements: count,
-    totalPages: Math.ceil(count / pageSize),
-    last: page * pageSize + rows.length >= count,
+    totalElements,
+    totalPages,
+    last: start + pagedRoots.length >= totalElements,
   }, 'Service types retrieved successfully');
 }
 
