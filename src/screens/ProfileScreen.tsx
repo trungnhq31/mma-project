@@ -18,6 +18,10 @@ const ProfileScreen = () => {
   const inferredUserId = getAuthUserId() || '';
   const [avatarEditing, setAvatarEditing] = useState(false);
   const [avatarInput, setAvatarInput] = useState('');
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [formFullName, setFormFullName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formPhone, setFormPhone] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -74,18 +78,70 @@ const ProfileScreen = () => {
 
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
-        
-        <InfoRow icon="person-outline" label="Họ và tên" value={name} />
-        
-        <InfoRow icon="mail-outline" label="Email" value={email} />
-        
-        {!!phone && <InfoRow icon="call-outline" label="Số điện thoại" value={phone} />}
-        
-        {!!address && <InfoRow icon="location-outline" label="Địa chỉ" value={address} />}
+        {profileEditing ? (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Họ và tên"
+              value={formFullName}
+              onChangeText={setFormFullName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={formEmail}
+              onChangeText={setFormEmail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Số điện thoại"
+              keyboardType="phone-pad"
+              value={formPhone}
+              onChangeText={setFormPhone}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#4CAF50', flex: 1 }]}
+                onPress={async () => {
+                  try {
+                    if (!inferredUserId) return;
+                    await updateUserProfile(inferredUserId, {
+                      fullName: formFullName,
+                      email: formEmail,
+                      numberPhone: formPhone,
+                    });
+                    const res = await getUserProfile(inferredUserId);
+                    setUser(res.data);
+                    setProfileEditing(false);
+                  } catch (e: any) {
+                    Alert.alert('Lỗi', e?.message || 'Cập nhật thông tin thất bại');
+                  }
+                }}
+              >
+                <Text style={styles.actionText}>Lưu thông tin</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#9e9e9e', flex: 1 }]}
+                onPress={() => setProfileEditing(false)}
+              >
+                <Text style={styles.actionText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
+            <InfoRow icon="person-outline" label="Họ và tên" value={name} />
+            <InfoRow icon="mail-outline" label="Email" value={email} />
+            {!!phone && <InfoRow icon="call-outline" label="Số điện thoại" value={phone} />}
+            {!!address && <InfoRow icon="location-outline" label="Địa chỉ" value={address} />}
+          </>
+        )}
       </View>
 
       <View style={styles.actionsContainer}>
-        {avatarEditing ? (
+        {profileEditing ? null : avatarEditing ? (
           <View style={styles.editRow}>
             <TextInput
               style={styles.input}
@@ -113,16 +169,31 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-            onPress={() => {
-              setAvatarEditing(true);
-              setAvatarInput(user?.avatarUrl || '');
-            }}
-          >
-            <Ionicons name="image" size={20} color="white" />
-            <Text style={styles.actionText}>Thêm/Cập nhật avatar</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+              onPress={() => {
+                setProfileEditing(true);
+                setFormFullName(user?.fullName || '');
+                setFormEmail(user?.email || '');
+                setFormPhone(user?.numberPhone || '');
+              }}
+            >
+              <Ionicons name="pencil" size={20} color="white" />
+              <Text style={styles.actionText}>Chỉnh sửa thông tin</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#2196f3' }]}
+              onPress={() => {
+                setAvatarEditing(true);
+                setAvatarInput(user?.avatarUrl || '');
+              }}
+            >
+              <Ionicons name="image" size={20} color="white" />
+              <Text style={styles.actionText}>Thêm/Cập nhật avatar</Text>
+            </TouchableOpacity>
+          </>
         )}
         
         <View style={[styles.actionButton, {backgroundColor: '#f44336'}]}>
