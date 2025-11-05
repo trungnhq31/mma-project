@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserProfile } from '../services/api';
+import { getUserProfile, getAuthUserId, updateUserProfile } from '../services/api';
+import { TextInput, TouchableOpacity } from 'react-native';
 
 const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
@@ -14,9 +15,9 @@ const ProfileScreen = () => {
     avatarUrl?: string;
   } | null>(null);
 
-  // TODO: lấy userId thực tế từ state sau login; tạm thời giả sử backend trả về và đã lưu ở đâu đó
-  // Ở bản tích hợp tối thiểu, bạn có thể truyền userId qua params hoặc lưu trong một store/context
-  const inferredUserId = (global as any).__USER_ID__ || '';
+  const inferredUserId = getAuthUserId() || '';
+  const [avatarEditing, setAvatarEditing] = useState(false);
+  const [avatarInput, setAvatarInput] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -84,10 +85,45 @@ const ProfileScreen = () => {
       </View>
 
       <View style={styles.actionsContainer}>
-        <View style={[styles.actionButton, {backgroundColor: '#4CAF50'}]}>
-          <Ionicons name="pencil" size={20} color="white" />
-          <Text style={styles.actionText}>Chỉnh sửa hồ sơ</Text>
-        </View>
+        {avatarEditing ? (
+          <View style={styles.editRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Dán URL ảnh avatar..."
+              value={avatarInput}
+              onChangeText={setAvatarInput}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+              onPress={async () => {
+                try {
+                  if (!inferredUserId) return;
+                  await updateUserProfile(inferredUserId, { avatarUrl: avatarInput });
+                  const res = await getUserProfile(inferredUserId);
+                  setUser(res.data);
+                  setAvatarEditing(false);
+                  setAvatarInput('');
+                } catch (e: any) {
+                  Alert.alert('Lỗi', e?.message || 'Cập nhật avatar thất bại');
+                }
+              }}
+            >
+              <Text style={styles.actionText}>Lưu avatar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+            onPress={() => {
+              setAvatarEditing(true);
+              setAvatarInput(user?.avatarUrl || '');
+            }}
+          >
+            <Ionicons name="image" size={20} color="white" />
+            <Text style={styles.actionText}>Thêm/Cập nhật avatar</Text>
+          </TouchableOpacity>
+        )}
         
         <View style={[styles.actionButton, {backgroundColor: '#f44336'}]}>
           <Ionicons name="log-out-outline" size={20} color="white" />
@@ -163,6 +199,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 15,
   },
+  editRow: {
+    gap: 10,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -170,6 +209,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
+    backgroundColor: '#fff',
   },
   actionText: {
     color: 'white',

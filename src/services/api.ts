@@ -96,11 +96,16 @@ export interface CreateAppointmentRequest {
 
 // ============ API FUNCTIONS ============
 
-// Auth token management (simple in-memory)
+// Auth token & userId (simple in-memory)
 let AUTH_TOKEN: string | null = null;
+let AUTH_USER_ID: string | null = null;
 export const setAuthToken = (token: string | null) => {
   AUTH_TOKEN = token;
 };
+export const setAuthUserId = (userId: string | null) => {
+  AUTH_USER_ID = userId;
+};
+export const getAuthUserId = () => AUTH_USER_ID;
 
 const withAuthHeaders = (extra: Record<string, string> = {}) => ({
   'Content-Type': 'application/json',
@@ -280,7 +285,7 @@ export const getBookingHistory = async (
 export const login = async (
   email: string,
   password: string
-): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean }>> => {
+): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean; userId?: string }>> => {
   const url = `${API_BASE_URL}/auth/login`;
   const response = await fetch(url, {
     method: 'POST',
@@ -292,6 +297,7 @@ export const login = async (
     throw new Error(json.message || `HTTP error! status: ${response.status}`);
   }
   if (json?.data?.token) setAuthToken(json.data.token);
+  if (json?.data?.userId) setAuthUserId(json.data.userId);
   return json;
 };
 
