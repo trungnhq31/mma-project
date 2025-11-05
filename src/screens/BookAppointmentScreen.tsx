@@ -79,7 +79,7 @@ const schema = yup.object().shape({
     .min(1, 'Vui lòng chọn ít nhất một dịch vụ'),
   serviceType: yup.string().required('Vui lòng chọn loại hình dịch vụ'),
   address: yup.string().when('serviceType', (serviceType, schema) => {
-    return serviceType === 'mobile' 
+    return serviceType[0] === 'mobile' 
       ? schema.required('Vui lòng nhập địa chỉ gặp nạn')
       : schema;
   }),
