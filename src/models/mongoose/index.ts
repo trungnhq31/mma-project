@@ -68,6 +68,7 @@ const UserSchema = new Schema(
     avatarUrl: { type: String },
     provider: { type: String, default: 'local' },
     isActive: { type: Boolean, default: true },
+    isAdmin: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

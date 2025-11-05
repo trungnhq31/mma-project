@@ -54,4 +54,33 @@ export async function registerUser(input: {
   };
 }
 
+export async function loginUser(input: { email: string; password: string }) {
+  const user = await UserModel.findOne({ email: input.email });
+  if (!user) {
+    const err = new Error('Invalid email or password');
+    (err as any).status = 401;
+    (err as any).code = 'INVALID_CREDENTIALS';
+    throw err;
+  }
+
+  const ok = await bcrypt.compare(input.password, user.passwordHash);
+  if (!ok) {
+    const err = new Error('Invalid email or password');
+    (err as any).status = 401;
+    (err as any).code = 'INVALID_CREDENTIALS';
+    throw err;
+  }
+
+  const payload = { sub: String((user as any)._id), username: user.username, email: user.email };
+  const token = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+
+  return {
+    authenticated: true,
+    token,
+    refreshToken,
+    isAdmin: Boolean((user as any).isAdmin),
+  };
+}
+
 

@@ -10,4 +10,9 @@ export const validateRegister = [
   body('provider').optional().isString().trim(),
 ];
 
+export const validateLogin = [
+  body('email').isEmail().normalizeEmail(),
+  body('password').isString().isLength({ min: 6 }),
+];
+
 
