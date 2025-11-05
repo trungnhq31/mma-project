@@ -273,3 +273,24 @@ export const getBookingHistory = async (
   }
   return response.json();
 };
+
+/**
+ * POST /api/v1/auth/login
+ */
+export const login = async (
+  email: string,
+  password: string
+): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean }>> => {
+  const url = `${API_BASE_URL}/auth/login`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ email, password }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  if (json?.data?.token) setAuthToken(json.data.token);
+  return json;
+};
