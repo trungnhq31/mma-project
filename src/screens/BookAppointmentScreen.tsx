@@ -185,6 +185,7 @@ const BookAppointmentScreen = () => {
         setIsLoadingServices(true);
         try {
           const response = await getServiceTypesByVehicleType(vehicleId, 0, 1000, '', true);
+          console.log('[Services] Raw API data:', JSON.stringify(response?.data?.data || [], null, 2));
           if (response.success && response.data.data) {
             // Map giữ đúng cấu trúc cây
             const mapTree = (items: ServiceTypeResponse[]): ServiceType[] =>
@@ -217,6 +218,7 @@ const BookAppointmentScreen = () => {
             };
 
             const tree = dedupeTree(mapTree(response.data.data));
+            console.log('[Services] Built tree:', JSON.stringify(tree, null, 2));
             setServices(tree);
           }
         } catch (error) {
@@ -265,6 +267,7 @@ const BookAppointmentScreen = () => {
   };
 
   const toggleService = (serviceId: string) => {
+    console.log('[Services] Toggle expand for:', serviceId, 'current=', expandedServices[serviceId]);
     setExpandedServices(prev => ({
       ...prev,
       [serviceId]: !prev[serviceId]
@@ -275,6 +278,7 @@ const BookAppointmentScreen = () => {
     if (!selectedVehicleTypeId) return;
     
     const isCurrentlySelected = selectedServices.includes(serviceId);
+    console.log('[Services] Toggle select:', { serviceId, isCurrentlySelected, hasChildren: !!(service.children && service.children.length) });
     const descendants = collectDescendants(service);
     if (isCurrentlySelected) {
       // Bỏ chọn cha và toàn bộ hậu duệ
