@@ -106,6 +106,10 @@ export const setAuthUserId = (userId: string | null) => {
   AUTH_USER_ID = userId;
 };
 export const getAuthUserId = () => AUTH_USER_ID;
+export const clearAuth = () => {
+  AUTH_TOKEN = null;
+  AUTH_USER_ID = null;
+};
 
 const withAuthHeaders = (extra: Record<string, string> = {}) => ({
   'Content-Type': 'application/json',
@@ -298,6 +302,23 @@ export const login = async (
   }
   if (json?.data?.token) setAuthToken(json.data.token);
   if (json?.data?.userId) setAuthUserId(json.data.userId);
+  return json;
+};
+
+/**
+ * POST /api/v1/auth/logout
+ */
+export const logout = async (
+  userId: string
+): Promise<ApiResponse<string>> => {
+  const url = `${API_BASE_URL}/auth/logout`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  const json = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(json.message || `HTTP ${resp.status}`);
   return json;
 };
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserProfile, getAuthUserId, updateUserProfile } from '../services/api';
+import { getUserProfile, getAuthUserId, updateUserProfile, logout as apiLogout, clearAuth } from '../services/api';
 import { TextInput, TouchableOpacity } from 'react-native';
 
 const ProfileScreen = () => {
@@ -196,10 +196,20 @@ const ProfileScreen = () => {
           </>
         )}
         
-        <View style={[styles.actionButton, {backgroundColor: '#f44336'}]}>
+        <TouchableOpacity
+          style={[styles.actionButton, {backgroundColor: '#f44336'}]}
+          onPress={async () => {
+            try {
+              if (!user?.userId) return;
+              await apiLogout(user.userId);
+            } catch {}
+            clearAuth();
+            Alert.alert('Thông báo', 'Đã đăng xuất');
+          }}
+        >
           <Ionicons name="log-out-outline" size={20} color="white" />
           <Text style={styles.actionText}>Đăng xuất</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
