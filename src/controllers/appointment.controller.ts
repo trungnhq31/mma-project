@@ -81,3 +81,40 @@ export async function getMyAppointmentHistory(req: Request, res: Response) {
   return success(res, { items: data, page, pageSize, total }, 'Appointment history');
 }
 
+export async function getAppointmentDetail(req: Request, res: Response) {
+  const userId = req.user?.sub;
+  if (!userId) {
+    return error(res, 401, 'Unauthorized', 'UNAUTHORIZED');
+  }
+  const { id } = req.params as { id: string };
+  if (!id) {
+    return error(res, 400, 'Invalid appointment id', 'VALIDATION_ERROR');
+  }
+
+  const found = await AppointmentModel.findOne({ _id: id, customerId: userId })
+    .populate('vehicleTypeId', 'vehicleTypeName')
+    .lean();
+
+  if (!found) {
+    return error(res, 404, 'Appointment not found', 'NOT_FOUND');
+  }
+
+  const data = {
+    appointmentId: String(found._id),
+    customerFullName: found.customerFullName,
+    customerPhoneNumber: found.customerPhoneNumber,
+    customerEmail: found.customerEmail,
+    vehicleTypeId: String((found as any).vehicleTypeId?._id || found.vehicleTypeId),
+    vehicleTypeName: (found as any).vehicleTypeId?.vehicleTypeName,
+    vehicleNumberPlate: found.vehicleNumberPlate,
+    userAddress: found.userAddress,
+    serviceMode: found.serviceMode,
+    scheduledAt: found.scheduledAt,
+    status: found.status,
+    notes: found.notes,
+    serviceTypeIds: (found as any).serviceTypeIds || [],
+  };
+
+  return success(res, data, 'Appointment detail');
+}
+
