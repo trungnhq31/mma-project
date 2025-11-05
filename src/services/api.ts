@@ -96,6 +96,18 @@ export interface CreateAppointmentRequest {
 
 // ============ API FUNCTIONS ============
 
+// Auth token management (simple in-memory)
+let AUTH_TOKEN: string | null = null;
+export const setAuthToken = (token: string | null) => {
+  AUTH_TOKEN = token;
+};
+
+const withAuthHeaders = (extra: Record<string, string> = {}) => ({
+  'Content-Type': 'application/json',
+  ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
+  ...extra,
+});
+
 /**
  * GET /api/v1/vehicle-type
  * Lấy danh sách loại xe (phân trang, tìm kiếm)
@@ -117,9 +129,7 @@ export const getVehicleTypes = async (
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: withAuthHeaders(),
     });
     
     if (!response.ok) {
@@ -142,7 +152,9 @@ export const getVehicleTypes = async (
  * Lấy danh sách Service Mode enum
  */
 export const getServiceModes = async (): Promise<ApiResponse<string[]>> => {
-  const response = await fetch(`${API_BASE_URL}/appointment/service-mode`);
+  const response = await fetch(`${API_BASE_URL}/appointment/service-mode`, {
+    headers: withAuthHeaders(),
+  });
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -171,7 +183,8 @@ export const getServiceTypesByVehicleType = async (
   });
   
   const response = await fetch(
-    `${API_BASE_URL}/service-type/vehicle_type/${vehicleTypeId}?${params}`
+    `${API_BASE_URL}/service-type/vehicle_type/${vehicleTypeId}?${params}`,
+    { headers: withAuthHeaders() }
   );
   
   if (!response.ok) {
@@ -201,9 +214,7 @@ export const createAppointment = async (
     console.log('[API] Sending fetch request...');
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: withAuthHeaders(),
       body: JSON.stringify(data),
     });
     
@@ -230,4 +241,95 @@ export const createAppointment = async (
     }
     throw error;
   }
+};
+
+/**
+ * GET /api/v1/appointment/history
+ * Lấy lịch sử đặt lịch của user hiện tại (JWT)
+ */
+export interface AppointmentHistoryItem {
+  appointmentId: string;
+  customerFullName: string;
+  customerPhoneNumber: string;
+  customerEmail: string;
+  vehicleTypeId: string;
+  vehicleTypeName?: string;
+  vehicleNumberPlate: string;
+  serviceMode: 'AT_CENTER' | 'MOBILE';
+  scheduledAt: string;
+  status: string;
+}
+
+export const getBookingHistory = async (
+  page = 0,
+  pageSize = 10
+): Promise<ApiResponse<{ items: AppointmentHistoryItem[]; page: number; pageSize: number; total: number }>> => {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  const url = `${API_BASE_URL}/appointment/history?${params.toString()}`;
+  const response = await fetch(url, { headers: withAuthHeaders() });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+};
+
+/**
+ * POST /api/v1/auth/login
+ */
+export const login = async (
+  email: string,
+  password: string
+): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean }>> => {
+  const url = `${API_BASE_URL}/auth/login`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ email, password }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  if (json?.data?.token) setAuthToken(json.data.token);
+  return json;
+};
+
+/**
+ * POST /api/v1/auth/register
+ */
+export const register = async (
+  fullName: string,
+  email: string,
+  password: string,
+  numberPhone?: string
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; token: string; refreshToken: string }>> => {
+  const url = `${API_BASE_URL}/auth/register`;
+  const username = email.split('@')[0];
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ username, password, email, fullName, numberPhone, provider: 'local' }),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  if (json?.data?.token) setAuthToken(json.data.token);
+  return json;
+};
+
+/**
+ * GET /api/v1/appointment/:id
+ */
+export const getBookingDetail = async (
+  appointmentId: string
+): Promise<ApiResponse<any>> => {
+  const url = `${API_BASE_URL}/appointment/${appointmentId}`;
+  const response = await fetch(url, { headers: withAuthHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  return json;
 };

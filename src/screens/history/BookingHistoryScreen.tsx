@@ -1,50 +1,58 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
+import { getBookingHistory, AppointmentHistoryItem } from '../../services/api';
 
 type Booking = {
   id: string;
   customerName: string;
-  serviceName: string;
+  serviceName?: string;
   bookingDate: string;
   status: string;
-  details: {
-    phone: string;
-    email: string;
-    vehicleType: string;
-    licensePlate: string;
-    serviceType: string;
-    address: string;
-    notes?: string;
-  };
+  raw: AppointmentHistoryItem;
 };
-
-// Mock data for bookings
-const mockBookings = [
-  {
-    id: '1',
-    customerName: 'Nguyễn Văn A',
-    serviceName: 'Bảo dưỡng định kỳ',
-    bookingDate: '2023-11-05T10:00:00',
-    status: 'Đã xác nhận',
-    details: {
-      phone: '0901234567',
-      email: 'nguyenvana@example.com',
-      vehicleType: 'Toyota Vios',
-      licensePlate: '51A-12345',
-      serviceType: 'Tại trung tâm',
-      address: '123 Đường ABC, Quận 1, TP.HCM',
-      notes: 'Cần kiểm tra thêm hệ thống phanh'
-    }
-  },
-  // Add more mock data as needed
-];
 
 export default function BookingHistoryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [bookings] = useState<Booking[]>(mockBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await getBookingHistory(0, 20);
+      const items = res.data.items || [];
+      const mapped: Booking[] = items.map((a) => ({
+        id: a.appointmentId,
+        customerName: a.customerFullName,
+        serviceName: a.vehicleTypeName || (a.serviceMode === 'AT_CENTER' ? 'Tại trung tâm' : 'Lưu động'),
+        bookingDate: a.scheduledAt,
+        status: a.status,
+        raw: a,
+      }));
+      setBookings(mapped);
+    } catch (e) {
+      // có thể hiển thị thông báo nếu cần
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  // Tự động reload khi màn hình lấy lại focus (ví dụ vừa đặt lịch xong chuyển sang tab Lịch sử)
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadHistory();
+    setRefreshing(false);
+  }, [loadHistory]);
 
   const renderItem: ListRenderItem<Booking> = ({ item }) => (
     <TouchableOpacity 
@@ -70,6 +78,7 @@ export default function BookingHistoryScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       />
     </View>
   );
