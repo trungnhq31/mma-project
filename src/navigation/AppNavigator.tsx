@@ -88,6 +88,9 @@ function AppNavigator() {
     // This will be handled by the navigation state change
   };
 
+  // Expose a simple global setter so screens can trigger logout
+  (global as any).__SET_LOGGED_IN__ = (val: boolean) => setIsLoggedIn(val);
+
   return (
     <Stack.Navigator>
         {!isLoggedIn ? (

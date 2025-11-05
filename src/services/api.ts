@@ -96,10 +96,19 @@ export interface CreateAppointmentRequest {
 
 // ============ API FUNCTIONS ============
 
-// Auth token management (simple in-memory)
+// Auth token & userId (simple in-memory)
 let AUTH_TOKEN: string | null = null;
+let AUTH_USER_ID: string | null = null;
 export const setAuthToken = (token: string | null) => {
   AUTH_TOKEN = token;
+};
+export const setAuthUserId = (userId: string | null) => {
+  AUTH_USER_ID = userId;
+};
+export const getAuthUserId = () => AUTH_USER_ID;
+export const clearAuth = () => {
+  AUTH_TOKEN = null;
+  AUTH_USER_ID = null;
 };
 
 const withAuthHeaders = (extra: Record<string, string> = {}) => ({
@@ -280,7 +289,7 @@ export const getBookingHistory = async (
 export const login = async (
   email: string,
   password: string
-): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean }>> => {
+): Promise<ApiResponse<{ authenticated: boolean; token: string; refreshToken: string; isAdmin: boolean; userId?: string }>> => {
   const url = `${API_BASE_URL}/auth/login`;
   const response = await fetch(url, {
     method: 'POST',
@@ -292,6 +301,59 @@ export const login = async (
     throw new Error(json.message || `HTTP error! status: ${response.status}`);
   }
   if (json?.data?.token) setAuthToken(json.data.token);
+  if (json?.data?.userId) setAuthUserId(json.data.userId);
+  return json;
+};
+
+/**
+ * POST /api/v1/auth/logout
+ */
+export const logout = async (
+  userId: string
+): Promise<ApiResponse<string>> => {
+  const url = `${API_BASE_URL}/auth/logout`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  const json = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(json.message || `HTTP ${resp.status}`);
+  return json;
+};
+
+/**
+ * PATCH /api/v1/user/profile/:id
+ */
+export const updateUserProfile = async (
+  id: string,
+  payload: { email?: string; fullName?: string; numberPhone?: string; address?: string; avatarUrl?: string }
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; numberPhone?: string; address?: string; avatarUrl?: string }>> => {
+  const url = `${API_BASE_URL}/user/profile/${id}`;
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: withAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  return json;
+};
+
+/**
+ * GET /api/v1/user/profile/:id
+ */
+export const getUserProfile = async (
+  id: string
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; numberPhone?: string; address?: string; avatarUrl?: string }>> => {
+  const url = `${API_BASE_URL}/user/profile/${id}`;
+  const response = await fetch(url, { headers: withAuthHeaders() });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
   return json;
 };
 
@@ -316,6 +378,35 @@ export const register = async (
     throw new Error(json.message || `HTTP error! status: ${response.status}`);
   }
   if (json?.data?.token) setAuthToken(json.data.token);
+  return json;
+};
+
+/**
+ * POST /api/v1/auth/change-password
+ * Đổi mật khẩu người dùng
+ */
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<ApiResponse<{ success: boolean; message: string }>> => {
+  const url = `${API_BASE_URL}/auth/change-password`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: withAuthHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+    }),
+  });
+
+  const json = await response.json().catch(() => ({}));
+  
+  if (!response.ok) {
+    throw new Error(json.message || 'Đổi mật khẩu thất bại');
+  }
+
   return json;
 };
 
