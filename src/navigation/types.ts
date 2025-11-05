@@ -26,4 +26,5 @@ export type MainTabParamList = {
   Home: undefined;
   BookAppointment: undefined;
   BookingHistory: undefined;
+  Profile: undefined;
 };
