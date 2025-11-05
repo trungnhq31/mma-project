@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { validateRegister, validateLogin, validateLogout } from '../../validations/auth.validation';
-import { register, login, logout } from '../../controllers/auth.controller';
+import { validateRegister, validateLogin, validateLogout, validateChangePassword } from '../../validations/auth.validation';
+import { register, login, logout, changePasswordController } from '../../controllers/auth.controller';
+import { authenticate } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -61,6 +62,7 @@ router.post('/login', validateLogin, login);
  *         description: Dang xuat thanh cong
  */
 router.post('/logout', validateLogout, logout);
+router.patch('/change-password', authenticate, validateChangePassword, changePasswordController);
 
 export default router;
 

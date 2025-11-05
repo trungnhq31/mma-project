@@ -9,6 +9,7 @@
     "build": "tsc",
     "migrate": "sequelize-cli db:migrate",
     "seed": "ts-node src/seeds/seed.ts",
+    "seed:vi": "ts-node src/seeds/normalize-service-types.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
     "expo:start": "expo start",

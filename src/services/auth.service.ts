@@ -84,4 +84,23 @@ export async function loginUser(input: { email: string; password: string }) {
   };
 }
 
+export async function changePassword(input: { userId: string; oldPassword: string; newPassword: string }) {
+  const user = await UserModel.findById(input.userId);
+  if (!user) {
+    const err = new Error('User not found');
+    (err as any).status = 404;
+    (err as any).code = 'NOT_FOUND';
+    throw err;
+  }
+  const ok = await bcrypt.compare(input.oldPassword, user.passwordHash);
+  if (!ok) {
+    const err = new Error('Old password is incorrect');
+    (err as any).status = 400;
+    (err as any).code = 'WRONG_OLD_PASSWORD';
+    throw err;
+  }
+  user.passwordHash = await bcrypt.hash(input.newPassword, 10);
+  await user.save();
+}
+
 

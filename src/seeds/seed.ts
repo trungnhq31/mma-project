@@ -36,18 +36,18 @@ async function run() {
 
     // Service types for vt1
     const inspection =
-      (await ServiceTypeModel.findOne({ serviceName: 'General Inspection', vehicleTypeId: vt1._id })) ||
-      (await ServiceTypeModel.create({ serviceName: 'General Inspection', vehicleTypeId: vt1._id, isActive: true, isDeleted: false }));
+      (await ServiceTypeModel.findOne({ serviceName: 'Kiểm tra tổng quát', vehicleTypeId: vt1._id })) ||
+      (await ServiceTypeModel.create({ serviceName: 'Kiểm tra tổng quát', vehicleTypeId: vt1._id, isActive: true, isDeleted: false }));
 
     const battery =
-      (await ServiceTypeModel.findOne({ serviceName: 'Battery Maintenance', vehicleTypeId: vt1._id })) ||
-      (await ServiceTypeModel.create({ serviceName: 'Battery Maintenance', vehicleTypeId: vt1._id, isActive: true, isDeleted: false }));
+      (await ServiceTypeModel.findOne({ serviceName: 'Bảo dưỡng pin', vehicleTypeId: vt1._id })) ||
+      (await ServiceTypeModel.create({ serviceName: 'Bảo dưỡng pin', vehicleTypeId: vt1._id, isActive: true, isDeleted: false }));
 
     await ServiceTypeModel.updateOne(
-      { serviceName: 'Cooling System Check', vehicleTypeId: vt1._id, parentId: inspection._id },
+      { serviceName: 'Kiểm tra hệ thống làm mát', vehicleTypeId: vt1._id, parentId: inspection._id },
       {
         $setOnInsert: {
-          serviceName: 'Cooling System Check',
+          serviceName: 'Kiểm tra hệ thống làm mát',
           vehicleTypeId: vt1._id,
           parentId: inspection._id,
           estimatedDurationMinutes: 30,
@@ -59,10 +59,10 @@ async function run() {
     );
 
     await ServiceTypeModel.updateOne(
-      { serviceName: 'High Voltage Inspection', vehicleTypeId: vt1._id, parentId: inspection._id },
+      { serviceName: 'Kiểm tra điện áp cao', vehicleTypeId: vt1._id, parentId: inspection._id },
       {
         $setOnInsert: {
-          serviceName: 'High Voltage Inspection',
+          serviceName: 'Kiểm tra điện áp cao',
           vehicleTypeId: vt1._id,
           parentId: inspection._id,
           estimatedDurationMinutes: 45,
@@ -74,10 +74,10 @@ async function run() {
     );
 
     await ServiceTypeModel.updateOne(
-      { serviceName: 'Battery Health Check', vehicleTypeId: vt1._id, parentId: battery._id },
+      { serviceName: 'Kiểm tra tình trạng pin', vehicleTypeId: vt1._id, parentId: battery._id },
       {
         $setOnInsert: {
-          serviceName: 'Battery Health Check',
+          serviceName: 'Kiểm tra tình trạng pin',
           vehicleTypeId: vt1._id,
           parentId: battery._id,
           estimatedDurationMinutes: 40,
@@ -90,8 +90,8 @@ async function run() {
 
     // Service types for vt2 (simple)
     await ServiceTypeModel.updateOne(
-      { serviceName: 'General Inspection', vehicleTypeId: vt2._id },
-      { $setOnInsert: { serviceName: 'General Inspection', vehicleTypeId: vt2._id, isActive: true, isDeleted: false } },
+      { serviceName: 'Kiểm tra tổng quát', vehicleTypeId: vt2._id },
+      { $setOnInsert: { serviceName: 'Kiểm tra tổng quát', vehicleTypeId: vt2._id, isActive: true, isDeleted: false } },
       { upsert: true }
     );
 
