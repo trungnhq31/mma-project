@@ -399,34 +399,7 @@ export const register = async (
   return json;
 };
 
-/**
- * POST /api/v1/auth/change-password
- * Đổi mật khẩu người dùng
- */
-export const changePassword = async (
-  currentPassword: string,
-  newPassword: string
-): Promise<ApiResponse<{ success: boolean; message: string }>> => {
-  const url = `${API_BASE_URL}/auth/change-password`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: withAuthHeaders({
-      'Content-Type': 'application/json',
-    }),
-    body: JSON.stringify({
-      currentPassword,
-      newPassword,
-    }),
-  });
-
-  const json = await response.json().catch(() => ({}));
-  
-  if (!response.ok) {
-    throw new Error(json.message || 'Đổi mật khẩu thất bại');
-  }
-
-  return json;
-};
+// (removed duplicate changePassword definition)
 
 /**
  * GET /api/v1/appointment/:id
