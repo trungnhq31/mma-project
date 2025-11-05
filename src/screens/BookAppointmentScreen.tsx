@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Picker } from '@react-native-picker/picker';
@@ -74,7 +74,9 @@ const schema = yup.object().shape({
     .email('Email không hợp lệ')
     .matches(/@gmail\.com$/, 'Email phải có định dạng @gmail.com'),
   vehicleTypeId: yup.string().required('Vui lòng chọn loại xe'),
-  mileage: yup.string().matches(/^[0-9]*$/, 'Số km phải là số'),
+  mileage: yup.string()
+    .optional()
+    .matches(/^[0-9]*$/, 'Số km phải là số'),
   licensePlate: yup
     .string()
     .required('Vui lòng nhập biển số xe')
@@ -324,7 +326,7 @@ const BookAppointmentScreen = () => {
     return 'unchecked';
   };
 
-  const onSubmit = async (data: BookingFormData) => {
+  const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
     console.log('[BookAppointment] onSubmit called with data:', data);
     // Loading state already set in onPress handler
     try {
@@ -856,9 +858,22 @@ const BookAppointmentScreen = () => {
               // Fallback to handleSubmit
               console.log('[BookAppointment] Falling back to handleSubmit...');
               handleSubmit(
-                async (data) => {
+                (data) => {
                   console.log('[BookAppointment] ✅ Validation passed, calling onSubmit');
-                  await onSubmit(data);
+                  const formData: BookingFormData = {
+                    fullName: data.fullName,
+                    phoneNumber: data.phoneNumber,
+                    email: data.email,
+                    vehicleTypeId: data.vehicleTypeId,
+                    mileage: data.mileage,
+                    licensePlate: data.licensePlate,
+                    selectedServices: data.selectedServices || [],
+                    serviceType: data.serviceType as 'onsite' | 'mobile',
+                    address: data.address,
+                    appointmentDate: data.appointmentDate,
+                    notes: data.notes
+                  };
+                  return onSubmit(formData);
                 },
                 (validationErrors) => {
                   console.log('[BookAppointment] ❌ Validation failed:', JSON.stringify(validationErrors, null, 2));
@@ -894,6 +909,14 @@ const BookAppointmentScreen = () => {
 
 const styles = StyleSheet.create({
   // ...
+  servicesList: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    maxHeight: 200,
+    overflow: 'hidden',
+  },
   serviceItem: {
     flexDirection: 'row',
     alignItems: 'center',
