@@ -19,4 +19,9 @@ export const validateLogout = [
   body('userId').isString().trim().notEmpty(),
 ];
 
+export const validateChangePassword = [
+  body('oldPassword').isString().isLength({ min: 6 }),
+  body('newPassword').isString().isLength({ min: 8 }),
+];
+
 
