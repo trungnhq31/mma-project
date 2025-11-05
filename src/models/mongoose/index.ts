@@ -51,6 +51,8 @@ const AppointmentSchema = new Schema(
     scheduledAt: { type: Date, required: true },
     notes: String,
     status: { type: String, default: 'PENDING' },
+    customerId: { type: String, required: false },
+    serviceTypeIds: { type: [Schema.Types.ObjectId], ref: 'ServiceType', default: [] },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
