@@ -47,4 +47,28 @@ export async function updateMyProfile(req: Request, res: Response) {
   return success(res, data, 'Profile updated');
 }
 
+export async function getMyProfile(req: Request, res: Response) {
+  const authUserId = req.user?.sub;
+  const { id } = req.params as { id: string };
+  if (!authUserId || authUserId !== id) {
+    return error(res, 403, 'Forbidden', 'FORBIDDEN');
+  }
+
+  const found = await UserModel.findById(id).lean();
+  if (!found) {
+    return error(res, 404, 'User not found', 'NOT_FOUND');
+  }
+
+  const data = {
+    userId: String(found._id),
+    email: found.email,
+    fullName: found.fullName,
+    numberPhone: found.numberPhone,
+    address: (found as any).address,
+    avatarUrl: found.avatarUrl,
+  };
+
+  return success(res, data, 'Profile');
+}
+
 
