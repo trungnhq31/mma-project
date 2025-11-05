@@ -1,0 +1,13 @@
+import { body } from 'express-validator';
+
+export const validateRegister = [
+  body('username').isString().trim().notEmpty(),
+  body('password').isString().isLength({ min: 6 }),
+  body('email').isEmail().normalizeEmail(),
+  body('fullName').isString().trim().notEmpty(),
+  body('numberPhone').optional().isString().trim(),
+  body('avatarUrl').optional().isString().trim(),
+  body('provider').optional().isString().trim(),
+];
+
+
