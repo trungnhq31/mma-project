@@ -296,6 +296,26 @@ export const login = async (
 };
 
 /**
+ * PATCH /api/v1/user/profile/:id
+ */
+export const updateUserProfile = async (
+  id: string,
+  payload: { email?: string; fullName?: string; numberPhone?: string; address?: string; avatarUrl?: string }
+): Promise<ApiResponse<{ userId: string; email: string; fullName: string; numberPhone?: string; address?: string; avatarUrl?: string }>> => {
+  const url = `${API_BASE_URL}/user/profile/${id}`;
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: withAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || `HTTP error! status: ${response.status}`);
+  }
+  return json;
+};
+
+/**
  * POST /api/v1/auth/register
  */
 export const register = async (
