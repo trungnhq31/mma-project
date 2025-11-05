@@ -59,15 +59,20 @@ const SERVICE_CENTER_ADDRESS = '123 Đường ABC, Phường XYZ, Quận 1, TP.H
 
 // Validation schema
 const schema = yup.object().shape({
-  fullName: yup.string().required('Vui lòng nhập họ và tên'),
+  fullName: yup
+    .string()
+    .required('Vui lòng nhập họ và tên')
+    .matches(/^[\p{L} ]+$/u, 'Tên không được chứa số hoặc ký tự đặc biệt'),
   phoneNumber: yup
     .string()
     .required('Vui lòng nhập số điện thoại')
-    .matches(/^[0-9]{10,}$/, 'Số điện thoại không hợp lệ'),
+    .matches(/^0[0-9]{9}$/, 'Số điện thoại phải bắt đầu bằng 0 và có đúng 10 số')
+    .matches(/^\d+$/, 'Chỉ được nhập số'),
   email: yup
     .string()
     .required('Vui lòng nhập email')
-    .email('Email không hợp lệ'),
+    .email('Email không hợp lệ')
+    .matches(/@gmail\.com$/, 'Email phải có định dạng @gmail.com'),
   vehicleTypeId: yup.string().required('Vui lòng chọn loại xe'),
   mileage: yup.string().matches(/^[0-9]*$/, 'Số km phải là số'),
   licensePlate: yup
@@ -109,28 +114,31 @@ const BookAppointmentScreen = () => {
   const {
     control,
     handleSubmit,
-    watch,
+    formState: { errors, touchedFields },
     setValue,
-    formState: { errors },
+    watch,
+    trigger,
   } = useForm<BookingFormData>({
-    resolver: yupResolver(schema) as any,
+    resolver: yupResolver(schema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       fullName: '',
       phoneNumber: '',
       email: '',
       vehicleTypeId: '',
+      mileage: '',
       licensePlate: '',
       selectedServices: [],
       serviceType: 'onsite',
       address: SERVICE_CENTER_ADDRESS,
       appointmentDate: null,
-      notes: ''
+      notes: '',
     },
   });
 
   const serviceType = watch('serviceType');
   const watchVehicleType = watch('vehicleTypeId');
-
 
   // Clear address when switching to mobile service, set default when switching to onsite
   useEffect(() => {
@@ -490,13 +498,22 @@ const BookAppointmentScreen = () => {
               <View style={[styles.input, errors.fullName && styles.inputError]}>
                 <TextInput
                   style={styles.textInput}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
+                  onBlur={() => {
+                    onBlur();
+                    trigger('fullName');
+                  }}
+                  onChangeText={(text) => {
+                    onChange(text);
+                    if (touchedFields.fullName) {
+                      trigger('fullName');
+                    }
+                  }}
                   value={value}
                   placeholder="Nhập họ và tên"
                 />
               </View>
               {errors.fullName && <Text style={styles.errorText}>{errors.fullName.message}</Text>}
+              {value && !errors.fullName && <Text style={styles.validText}>✓ Hợp lệ</Text>}
             </View>
           )}
           name="fullName"
@@ -510,14 +527,31 @@ const BookAppointmentScreen = () => {
               <View style={[styles.input, errors.phoneNumber && styles.inputError]}>
                 <TextInput
                   style={styles.textInput}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
+                  onBlur={() => {
+                    onBlur();
+                    trigger('phoneNumber');
+                  }}
+                  onChangeText={(text) => {
+                    // Only allow numbers
+                    const numericValue = text.replace(/[^0-9]/g, '');
+                    onChange(numericValue);
+                    if (touchedFields.phoneNumber) {
+                      trigger('phoneNumber');
+                    }
+                  }}
                   value={value}
                   placeholder="Nhập số điện thoại"
                   keyboardType="phone-pad"
+                  maxLength={10}
                 />
               </View>
-              {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber.message}</Text>}
+              {errors.phoneNumber ? (
+                <Text style={styles.errorText}>{errors.phoneNumber.message}</Text>
+              ) : value ? (
+                <Text style={styles.validText}>
+                  {value.length === 10 ? '✓ Số điện thoại hợp lệ' : `${value.length}/10 số`}
+                </Text>
+              ) : null}
             </View>
           )}
           name="phoneNumber"
@@ -531,15 +565,29 @@ const BookAppointmentScreen = () => {
               <View style={[styles.input, errors.email && styles.inputError]}>
                 <TextInput
                   style={styles.textInput}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
+                  onBlur={() => {
+                    onBlur();
+                    trigger('email');
+                  }}
+                  onChangeText={(text) => {
+                    onChange(text);
+                    if (touchedFields.email) {
+                      trigger('email');
+                    }
+                  }}
                   value={value}
                   placeholder="Nhập email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
               </View>
-              {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+              {errors.email ? (
+                <Text style={styles.errorText}>{errors.email.message}</Text>
+              ) : value && value.endsWith('@gmail.com') ? (
+                <Text style={styles.validText}>✓ Email hợp lệ</Text>
+              ) : value ? (
+                <Text style={styles.hintText}>Vui lòng nhập địa chỉ @gmail.com</Text>
+              ) : null}
             </View>
           )}
           name="email"
@@ -963,14 +1011,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   errorText: {
-    color: 'red',
+    color: '#ff3b30',
     fontSize: 12,
-    marginTop: 5,
+    marginTop: 4,
+    marginLeft: 8,
   },
-  servicesList: {
-    marginTop: 10,
+  validText: {
+    color: '#34C759',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 8,
   },
-
+  hintText: {
+    color: '#8E8E93',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 8,
+  },
   serviceName: {
     fontSize: 14,
     color: '#333',

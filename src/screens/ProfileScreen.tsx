@@ -1,8 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert, Modal, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserProfile, getAuthUserId, updateUserProfile, logout as apiLogout, clearAuth } from '../services/api';
+import { getUserProfile, getAuthUserId, updateUserProfile, logout as apiLogout, clearAuth, changePassword } from '../services/api';
 import { TextInput, TouchableOpacity } from 'react-native';
+import * as yup from 'yup';
+
+// Validation schemas
+const profileSchema = yup.object().shape({
+  fullName: yup.string().required('Vui lòng nhập họ và tên'),
+  email: yup
+    .string()
+    .required('Vui lòng nhập email')
+    .email('Email không hợp lệ'),
+  phone: yup
+    .string()
+    .matches(/^(0|\+84)[0-9]{9,10}$/, 'Số điện thoại không hợp lệ')
+    .nullable(),
+});
+
+const passwordSchema = yup.object().shape({
+  currentPassword: yup.string().required('Vui lòng nhập mật khẩu hiện tại'),
+  newPassword: yup
+    .string()
+    .required('Vui lòng nhập mật khẩu mới')
+    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('newPassword')], 'Mật khẩu xác nhận không khớp')
+    .required('Vui lòng xác nhận mật khẩu'),
+});
 
 const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
@@ -19,9 +45,161 @@ const ProfileScreen = () => {
   const [avatarEditing, setAvatarEditing] = useState(false);
   const [avatarInput, setAvatarInput] = useState('');
   const [profileEditing, setProfileEditing] = useState(false);
-  const [formFullName, setFormFullName] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formPhone, setFormPhone] = useState('');
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Form field handlers
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user types
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+  
+  // Password field handlers
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user types
+    if (passwordErrors[field]) {
+      setPasswordErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+  
+  // Toggle password modal
+  const togglePasswordModal = () => {
+    setShowPasswordModal(!showPasswordModal);
+    if (!showPasswordModal) {
+      // Reset password form when opening
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setPasswordErrors({});
+    }
+  };
+
+  // Handle profile update
+  const handleUpdateProfile = async () => {
+    try {
+      // Reset errors
+      setErrors({});
+      
+      // Validate form
+      await profileSchema.validate(formData, { abortEarly: false });
+      
+      // Show loading state
+      setIsUpdating(true);
+      
+      // Call API to update profile
+      await updateUserProfile(inferredUserId, {
+        fullName: formData.fullName,
+        email: formData.email,
+        numberPhone: formData.phone || undefined,
+      });
+      
+      // Update local user data
+      setUser(prev => prev ? {
+        ...prev,
+        fullName: formData.fullName,
+        email: formData.email,
+        numberPhone: formData.phone || undefined,
+      } : null);
+      
+      // Exit edit mode
+      setProfileEditing(false);
+      
+      // Show success message
+      Alert.alert('Thành công', 'Cập nhật thông tin thành công');
+    } catch (error: any) {
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const newErrors: Record<string, string> = {};
+        error.inner.forEach((err: any) => {
+          if (err.path) newErrors[err.path] = err.message;
+        });
+        setErrors(newErrors);
+      } else {
+        // Handle API errors
+        Alert.alert('Lỗi', error.message || 'Cập nhật thông tin thất bại. Vui lòng thử lại.');
+      }
+    } finally {
+      // Reset loading state
+      setIsUpdating(false);
+    }
+  };
+
+  // Handle password update
+  const handleUpdatePassword = async () => {
+    try {
+      // Reset errors
+      setPasswordErrors({});
+      
+      // Validate form
+      await passwordSchema.validate(passwordData, { abortEarly: false });
+      
+      // Show loading state
+      setIsUpdating(true);
+      
+      // Call API to change password
+      await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      
+      // Reset form and show success message
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      
+      // Close modal
+      setShowPasswordModal(false);
+      
+      // Show success message
+      Alert.alert('Thành công', 'Đổi mật khẩu thành công');
+    } catch (error: any) {
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const newErrors: Record<string, string> = {};
+        error.inner.forEach((err: any) => {
+          if (err.path) newErrors[err.path] = err.message;
+        });
+        setPasswordErrors(newErrors);
+      } else {
+        // Handle API errors
+        Alert.alert('Lỗi', error.message || 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
+      }
+    } finally {
+      // Reset loading state
+      setIsUpdating(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -81,46 +259,38 @@ const ProfileScreen = () => {
         {profileEditing ? (
           <>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.fullName && styles.inputError]}
+              value={formData.fullName}
+              onChangeText={(value) => handleInputChange('fullName', value)}
               placeholder="Họ và tên"
-              value={formFullName}
-              onChangeText={setFormFullName}
             />
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.email && styles.inputError]}
+              value={formData.email}
+              onChangeText={(value) => handleInputChange('email', value)}
               placeholder="Email"
               autoCapitalize="none"
               keyboardType="email-address"
-              value={formEmail}
-              onChangeText={setFormEmail}
             />
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.phone && styles.inputError]}
+              value={formData.phone}
+              onChangeText={(value) => handleInputChange('phone', value)}
               placeholder="Số điện thoại"
               keyboardType="phone-pad"
-              value={formPhone}
-              onChangeText={setFormPhone}
             />
+            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#4CAF50', flex: 1 }]}
-                onPress={async () => {
-                  try {
-                    if (!inferredUserId) return;
-                    await updateUserProfile(inferredUserId, {
-                      fullName: formFullName,
-                      email: formEmail,
-                      numberPhone: formPhone,
-                    });
-                    const res = await getUserProfile(inferredUserId);
-                    setUser(res.data);
-                    setProfileEditing(false);
-                  } catch (e: any) {
-                    Alert.alert('Lỗi', e?.message || 'Cập nhật thông tin thất bại');
-                  }
-                }}
+              <TouchableOpacity 
+                style={[styles.saveButton, isUpdating && styles.disabledButton]} 
+                onPress={handleUpdateProfile}
+                disabled={isUpdating}
               >
-                <Text style={styles.actionText}>Lưu thông tin</Text>
+                {isUpdating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Lưu thông tin</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: '#9e9e9e', flex: 1 }]}
@@ -174,9 +344,11 @@ const ProfileScreen = () => {
               style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
               onPress={() => {
                 setProfileEditing(true);
-                setFormFullName(user?.fullName || '');
-                setFormEmail(user?.email || '');
-                setFormPhone(user?.numberPhone || '');
+                setFormData({
+                  fullName: user?.fullName || '',
+                  email: user?.email || '',
+                  phone: user?.numberPhone || '',
+                });
               }}
             >
               <Ionicons name="pencil" size={20} color="white" />
@@ -192,6 +364,14 @@ const ProfileScreen = () => {
             >
               <Ionicons name="image" size={20} color="white" />
               <Text style={styles.actionText}>Thêm/Cập nhật avatar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#f44336' }]}
+              onPress={togglePasswordModal}
+            >
+              <Ionicons name="lock-open" size={20} color="white" />
+              <Text style={styles.actionText}>Đổi mật khẩu</Text>
             </TouchableOpacity>
           </>
         )}
@@ -212,11 +392,87 @@ const ProfileScreen = () => {
           <Text style={styles.actionText}>Đăng xuất</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showPasswordModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={togglePasswordModal}
+      >
+        <TouchableWithoutFeedback onPress={togglePasswordModal}>
+          <View style={styles.modalOverlay} />
+        </TouchableWithoutFeedback>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
+          <TextInput
+            style={[styles.input, passwordErrors.currentPassword && styles.inputError]}
+            value={passwordData.currentPassword}
+            onChangeText={(text) => handlePasswordChange('currentPassword', text)}
+            placeholder="Mật khẩu hiện tại"
+            secureTextEntry
+          />
+          {passwordErrors.currentPassword && (
+            <Text style={styles.errorText}>{passwordErrors.currentPassword}</Text>
+          )}
+          <TextInput
+            style={[styles.input, passwordErrors.newPassword && styles.inputError]}
+            value={passwordData.newPassword}
+            onChangeText={(text) => handlePasswordChange('newPassword', text)}
+            placeholder="Mật khẩu mới"
+            secureTextEntry
+          />
+          {passwordErrors.newPassword && (
+            <Text style={styles.errorText}>{passwordErrors.newPassword}</Text>
+          )}
+          <TextInput
+            style={[styles.input, passwordErrors.confirmPassword && styles.inputError]}
+            value={passwordData.confirmPassword}
+            onChangeText={(text) => handlePasswordChange('confirmPassword', text)}
+            placeholder="Xác nhận mật khẩu mới"
+            secureTextEntry
+          />
+          {passwordErrors.confirmPassword && (
+            <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text>
+          )}
+          <TouchableOpacity 
+            style={styles.changePasswordButton} 
+            onPress={handleUpdatePassword}
+          >
+            <Text style={styles.changePasswordButtonText}>Đổi mật khẩu</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  saveButton: {
+    backgroundColor: '#2196f3',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  changePasswordButton: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  changePasswordButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -295,15 +551,45 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
     backgroundColor: '#fff',
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
   },
   actionText: {
     color: 'white',
     marginLeft: 10,
     fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
   },
 });
 
