@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { getBookingHistory, AppointmentHistoryItem } from '../../services/api';
@@ -40,6 +40,13 @@ export default function BookingHistoryScreen() {
   useEffect(() => {
     loadHistory();
   }, [loadHistory]);
+
+  // Tự động reload khi màn hình lấy lại focus (ví dụ vừa đặt lịch xong chuyển sang tab Lịch sử)
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
