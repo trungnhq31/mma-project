@@ -5,7 +5,12 @@ import { success } from '../utils/response.util';
 type PlainServiceType = any;
 
 function buildTree(items: PlainServiceType[], parentId: string | null = null): PlainServiceType[] {
-  const nodes = items.filter((it) => (it.parentId ?? null) === parentId);
+  const parentKey = parentId === null ? null : String(parentId);
+  const nodes = items.filter((it) => {
+    const itParentId = it.parentId ?? null;
+    const itParentKey = itParentId === null ? null : String(itParentId);
+    return itParentKey === parentKey;
+  });
   return nodes.map((n) => ({
     ...n,
     children: buildTree(items, n.serviceTypeId),
@@ -37,8 +42,9 @@ export async function getServiceTypesTreeByVehicleType(req: Request, res: Respon
     ? (({ _id, ...other }: any) => ({ vehicleTypeId: _id, ...other }))(vehicleType)
     : null;
 
-  const plain = rowsAll.map(({ _id, ...rest }: any) => ({
-    serviceTypeId: _id,
+  const plain = rowsAll.map(({ _id, parentId, ...rest }: any) => ({
+    serviceTypeId: String(_id),
+    parentId: parentId ? String(parentId) : null,
     ...rest,
     vehicleTypeResponse,
     serviceTypeVehiclePartResponses: [],
