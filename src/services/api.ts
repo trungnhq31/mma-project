@@ -92,6 +92,7 @@ export interface CreateAppointmentRequest {
   scheduledAt: string; // ISO date string
   notes?: string;
   serviceTypeIds: string[];
+  others?: string; // Dịch vụ khác mà người dùng tự điền
 }
 
 // ============ API FUNCTIONS ============
@@ -267,6 +268,7 @@ export interface AppointmentHistoryItem {
   serviceMode: 'AT_CENTER' | 'MOBILE';
   scheduledAt: string;
   status: string;
+  others?: string;
 }
 
 export const getBookingHistory = async (

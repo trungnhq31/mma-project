@@ -41,6 +41,7 @@ export default function BookingDetailScreen({ route }: BookingDetailProps) {
   const serviceMode = detail?.serviceMode === 'MOBILE' ? 'Tại nhà' : 'Tại trung tâm';
   const address = detail?.userAddress || '';
   const notes = detail?.notes || '';
+  const others = detail?.others || '';
   const bookingDate = detail?.scheduledAt || booking?.bookingDate;
   const status = detail?.status || booking?.status;
   const orderId = detail?.appointmentId || booking?.id;
@@ -81,6 +82,9 @@ export default function BookingDetailScreen({ route }: BookingDetailProps) {
         )}
         {!!notes && (
           <DetailRow label="Ghi chú" value={notes} />
+        )}
+        {!!others && (
+          <DetailRow label="Dịch vụ khác" value={others} />
         )}
       </View>
     </ScrollView>

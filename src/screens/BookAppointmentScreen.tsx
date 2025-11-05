@@ -53,6 +53,7 @@ type BookingFormData = {
   // Appointment Details
   appointmentDate: Date | null;
   notes: string;
+  others?: string; // Dịch vụ khác mà người dùng tự điền
 };
 
 const SERVICE_CENTER_ADDRESS = '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM';
@@ -99,6 +100,7 @@ const schema = yup.object().shape({
       return date > new Date();
     }),
   notes: yup.string(),
+  others: yup.string().optional(),
 });
 
 const BookAppointmentScreen = () => {
@@ -136,6 +138,7 @@ const BookAppointmentScreen = () => {
       address: SERVICE_CENTER_ADDRESS,
       appointmentDate: null,
       notes: '',
+      others: '',
     },
   });
 
@@ -337,6 +340,7 @@ const BookAppointmentScreen = () => {
         scheduledAt: data.appointmentDate!.toISOString(),
         notes: data.notes || '',
         serviceTypeIds: data.selectedServices,
+        others: data.others || undefined,
       });
 
       // Call API
@@ -352,6 +356,7 @@ const BookAppointmentScreen = () => {
         scheduledAt: data.appointmentDate!.toISOString(),
         notes: data.notes || '',
         serviceTypeIds: data.selectedServices,
+        others: data.others || undefined,
       });
 
       if (response.success) {
@@ -374,6 +379,7 @@ const BookAppointmentScreen = () => {
                 setValue('address', SERVICE_CENTER_ADDRESS);
                 setValue('appointmentDate', null);
                 setValue('notes', '');
+                setValue('others', '');
                 setSelectedServices([]);
               },
             },
@@ -684,6 +690,27 @@ const BookAppointmentScreen = () => {
             <Text style={styles.errorText}>{errors.selectedServices.message}</Text>
           )}
         </View>
+
+        <Controller
+          control={control}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Dịch vụ khác (nếu có)</Text>
+              <View style={[styles.input, styles.textAreaContainer]}>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  placeholder="Nhập dịch vụ khác mà bạn muốn (nếu không tìm thấy trong danh sách)"
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+            </View>
+          )}
+          name="others"
+        />
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Loại hình dịch vụ *</Text>
